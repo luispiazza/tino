@@ -126,6 +126,18 @@ export const reservasRouter = router({
     }));
   }),
 
+  confirmar: socioProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const [reserva] = await ctx.db
+        .update(reservas)
+        .set({ status: "confirmada" })
+        .where(eq(reservas.id, input.id))
+        .returning();
+      if (!reserva) throw new TRPCError({ code: "NOT_FOUND" });
+      return reserva;
+    }),
+
   cancelar: socioProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {

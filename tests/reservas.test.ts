@@ -85,6 +85,15 @@ describe("reservas.criar", () => {
     ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 
+  it("confirmar muda o status e a reserva segue bloqueando", async () => {
+    const r = await socio().reservas.criar(diaria([ids.A]));
+    const confirmada = await socio().reservas.confirmar({ id: r.id });
+    expect(confirmada.status).toBe("confirmada");
+    await expect(
+      socio().reservas.criar(diaria([ids.A]))
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
   it("reserva cancelada não bloqueia a agenda", async () => {
     const r = await socio().reservas.criar(diaria([ids.A]));
     await socio().reservas.cancelar({ id: r.id });
