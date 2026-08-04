@@ -1,0 +1,7 @@
+export * from "./estudios";
+export * from "./reservas";
+export * from "./pessoas";
+export * from "./rotina";
+export * from "./rental";
+export * from "./financeiro";
+export * from "./campanhas";
