@@ -78,5 +78,6 @@ npm install
 npx shadcn@latest init
 cp .env.example .env   # preencher DATABASE_URL
 npm run db:generate && npm run db:migrate
+npm run criar-usuario -- "Seu Nome" voce@tinoestudio.com.br socio suasenha
 npm run dev
 ```
