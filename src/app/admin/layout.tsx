@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
 import { sessaoAtual } from "@/server/sessao-server";
@@ -20,9 +21,13 @@ export default async function AdminLayout({
     <div className="min-h-svh">
       <header className="flex items-center justify-between gap-4 border-b px-4 py-3 sm:px-6">
         <div className="flex items-center gap-6">
-          <span className="text-sm font-semibold tracking-tight">
-            Tino Estúdio
-          </span>
+          <Image
+            src="/logo.png"
+            alt="Tino Estúdio"
+            width={944}
+            height={411}
+            className="h-5 w-auto"
+          />
           <NavAdmin papel={session.papel} />
         </div>
         <div className="flex items-center gap-3">

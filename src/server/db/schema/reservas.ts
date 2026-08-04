@@ -16,11 +16,24 @@ export const reservaStatus = pgEnum("reserva_status", [
   "cancelada",
 ]);
 
+/*
+ * Cliente/produtor: nunca tem login — o portal autentica por token.
+ * Cadastro mínimo; o histórico de reservas conta a história.
+ */
+export const clientes = pgTable("clientes", {
+  id: serial("id").primaryKey(),
+  nome: varchar("nome", { length: 120 }).notNull(),
+  empresa: varchar("empresa", { length: 120 }),
+  telefone: varchar("telefone", { length: 20 }),
+  email: varchar("email", { length: 120 }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
 export const reservas = pgTable("reservas", {
   id: serial("id").primaryKey(),
   /* T_DDMMYYYY + letra — identificador humano. Vai na NF e na conversa. */
   codigo: varchar("codigo", { length: 12 }).notNull().unique(),
-  clienteId: integer("cliente_id"),
+  clienteId: integer("cliente_id").references(() => clientes.id),
   dataInicio: date("data_inicio").notNull(),
   dataFim: date("data_fim").notNull(),
   horaInicio: time("hora_inicio").notNull(),

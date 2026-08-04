@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { desc, eq, inArray } from "drizzle-orm";
 import { publicProcedure, socioProcedure, router } from "../trpc";
-import { reservaEstudios, reservas } from "../db/schema";
+import { clientes, reservaEstudios, reservas } from "../db/schema";
 import {
   buscarConflitos,
   complementaresSemBase,
@@ -104,9 +104,16 @@ export const reservasRouter = router({
 
   listar: socioProcedure.query(async ({ ctx }) => {
     const lista = await ctx.db
-      .select()
+      .select({
+        reserva: reservas,
+        clienteNome: clientes.nome,
+      })
       .from(reservas)
-      .orderBy(desc(reservas.dataInicio));
+      .leftJoin(clientes, eq(reservas.clienteId, clientes.id))
+      .orderBy(desc(reservas.dataInicio))
+      .then((linhas) =>
+        linhas.map(({ reserva, clienteNome }) => ({ ...reserva, clienteNome }))
+      );
     const juncao = lista.length
       ? await ctx.db
           .select()

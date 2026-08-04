@@ -1,5 +1,6 @@
 import { router } from "../trpc";
 import { authRouter } from "./auth";
+import { clientesRouter } from "./clientes";
 import { estudiosRouter } from "./estudios";
 import { reservasRouter } from "./reservas";
 import { escalaRouter } from "./escala";
@@ -9,6 +10,7 @@ import { campanhasRouter } from "./campanhas";
 
 export const appRouter = router({
   auth: authRouter,
+  clientes: clientesRouter,
   estudios: estudiosRouter,
   reservas: reservasRouter,
   escala: escalaRouter,

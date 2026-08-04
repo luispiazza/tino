@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { sessaoAtual } from "@/server/sessao-server";
 import { LoginForm } from "./login-form";
@@ -13,8 +14,15 @@ export default async function LoginPage() {
 
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-6 p-6">
-      <div className="flex flex-col items-center gap-1">
-        <h1 className="text-lg font-semibold tracking-tight">Tino Estúdio</h1>
+      <div className="flex flex-col items-center gap-2">
+        <Image
+          src="/logo.png"
+          alt="Tino Estúdio"
+          width={944}
+          height={411}
+          priority
+          className="h-10 w-auto"
+        />
         <p className="text-sm text-muted-foreground">Painel interno</p>
       </div>
       <LoginForm />
