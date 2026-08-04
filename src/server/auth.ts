@@ -78,10 +78,13 @@ export function lerCookieSessao(req: Request): string | null {
   return null;
 }
 
+/* Secure só em produção — Safari recusa cookie Secure em http://localhost */
+const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+
 export function cookieDeSessao(token: string, expiraEm: Date): string {
-  return `${COOKIE_SESSAO}=${token}; Path=/; HttpOnly; SameSite=Lax; Secure; Expires=${expiraEm.toUTCString()}`;
+  return `${COOKIE_SESSAO}=${token}; Path=/; HttpOnly; SameSite=Lax${secure}; Expires=${expiraEm.toUTCString()}`;
 }
 
 export function cookieDeLogout(): string {
-  return `${COOKIE_SESSAO}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
+  return `${COOKIE_SESSAO}=; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=0`;
 }
