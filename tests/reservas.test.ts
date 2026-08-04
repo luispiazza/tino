@@ -132,6 +132,58 @@ describe("reservas.criar", () => {
   });
 });
 
+describe("valores da reserva", () => {
+  it("trava: desconto maior que o bruto é recusado", async () => {
+    await expect(
+      socio().reservas.criar(
+        diaria([ids.A], { valorDiariaCents: 300000, descontoCents: 300001 })
+      )
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("trava: desconto sem diária definida é recusado", async () => {
+    await expect(
+      socio().reservas.criar(diaria([ids.A], { descontoCents: 100 }))
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("total = diárias × dias − desconto; sem valor, total nulo", async () => {
+    await socio().reservas.criar(
+      diaria([ids.A], {
+        dataInicio: "2026-08-10",
+        dataFim: "2026-08-12",
+        valorDiariaCents: 300000,
+        descontoCents: 50000,
+      })
+    );
+    await socio().reservas.criar(
+      diaria([ids.E], { dataInicio: "2026-08-15", dataFim: "2026-08-15" })
+    );
+    const lista = await socio().reservas.listar();
+    const comValor = lista.find((r) => r.estudioIds.includes(ids.A))!;
+    const semValor = lista.find((r) => r.estudioIds.includes(ids.E))!;
+    expect(comValor.valorTotalCents).toBe(3 * 300000 - 50000);
+    expect(semValor.valorTotalCents).toBeNull();
+  });
+
+  it("atualizarValores aplica a mesma trava sobre as datas gravadas", async () => {
+    const r = await socio().reservas.criar(diaria([ids.A]));
+    await expect(
+      socio().reservas.atualizarValores({
+        id: r.id,
+        valorDiariaCents: 100000,
+        descontoCents: 100001,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const ok = await socio().reservas.atualizarValores({
+      id: r.id,
+      valorDiariaCents: 100000,
+      descontoCents: 20000,
+    });
+    expect(ok.valorDiariaCents).toBe(100000);
+  });
+});
+
 describe("reservas.disponibilidade", () => {
   it("é a mesma regra da criação: aponta o conflito com código", async () => {
     await socio().reservas.criar(diaria([ids.A]));

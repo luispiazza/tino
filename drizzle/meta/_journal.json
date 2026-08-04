@@ -15,6 +15,13 @@
       "when": 1785886086067,
       "tag": "0001_clientes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785886853380,
+      "tag": "0002_valores_reserva",
+      "breakpoints": true
     }
   ]
 }

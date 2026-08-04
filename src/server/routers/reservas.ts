@@ -8,6 +8,11 @@ import {
   complementaresSemBase,
 } from "../reservas/disponibilidade";
 import { gerarTokenPortal, proximoCodigo } from "../reservas/codigo";
+import {
+  diasDaReserva,
+  totalCents,
+  validarValores,
+} from "../reservas/valores";
 
 const dataISO = z.string().date();
 const hora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "use HH:MM");
@@ -51,6 +56,8 @@ export const reservasRouter = router({
           horaFim: hora,
           estudioIds: z.array(z.number().int()).min(1),
           clienteId: z.number().int().nullish(),
+          valorDiariaCents: z.number().int().nonnegative().nullish(),
+          descontoCents: z.number().int().nonnegative().default(0),
         })
         .refine((p) => p.dataFim >= p.dataInicio, {
           message: "dataFim antes de dataInicio",
@@ -60,6 +67,11 @@ export const reservasRouter = router({
         })
     )
     .mutation(async ({ ctx, input }) => {
+      validarValores(
+        input.valorDiariaCents ?? null,
+        input.descontoCents,
+        diasDaReserva(input.dataInicio, input.dataFim)
+      );
       const semBase = await complementaresSemBase(ctx.db, input.estudioIds);
       if (semBase.length > 0) {
         throw new TRPCError({
@@ -88,6 +100,8 @@ export const reservasRouter = router({
             dataFim: input.dataFim,
             horaInicio: input.horaInicio,
             horaFim: input.horaFim,
+            valorDiariaCents: input.valorDiariaCents ?? null,
+            descontoCents: input.descontoCents,
             tokenPortalReserva: gerarTokenPortal(),
             tokenPortalProdutor: gerarTokenPortal(),
           })
@@ -130,8 +144,43 @@ export const reservasRouter = router({
       estudioIds: juncao
         .filter((j) => j.reservaId === r.id)
         .map((j) => j.estudioId),
+      valorTotalCents: totalCents(
+        r.valorDiariaCents,
+        r.descontoCents,
+        diasDaReserva(r.dataInicio, r.dataFim)
+      ),
     }));
   }),
+
+  atualizarValores: socioProcedure
+    .input(
+      z.object({
+        id: z.number().int(),
+        valorDiariaCents: z.number().int().nonnegative().nullable(),
+        descontoCents: z.number().int().nonnegative(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [existente] = await ctx.db
+        .select()
+        .from(reservas)
+        .where(eq(reservas.id, input.id));
+      if (!existente) throw new TRPCError({ code: "NOT_FOUND" });
+      validarValores(
+        input.valorDiariaCents,
+        input.descontoCents,
+        diasDaReserva(existente.dataInicio, existente.dataFim)
+      );
+      const [reserva] = await ctx.db
+        .update(reservas)
+        .set({
+          valorDiariaCents: input.valorDiariaCents,
+          descontoCents: input.descontoCents,
+        })
+        .where(eq(reservas.id, input.id))
+        .returning();
+      return reserva;
+    }),
 
   confirmar: socioProcedure
     .input(z.object({ id: z.number().int() }))

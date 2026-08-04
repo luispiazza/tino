@@ -39,6 +39,9 @@ export const reservas = pgTable("reservas", {
   horaInicio: time("hora_inicio").notNull(),
   horaFim: time("hora_fim").notNull(),
   status: reservaStatus("status").notNull().default("pendente"),
+  /* nulo = valor ainda não negociado — nunca um número inventado */
+  valorDiariaCents: integer("valor_diaria_cents"),
+  descontoCents: integer("desconto_cents").notNull().default(0),
   /*
    * Tokens opacos, um por portal — a credencial, separada do código.
    * Revogáveis, expiram após o fechamento da comanda.

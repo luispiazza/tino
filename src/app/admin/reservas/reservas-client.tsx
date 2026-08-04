@@ -41,7 +41,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { CalendarioAno } from "./calendario-ano";
 import { CalendarioMes } from "./calendario-mes";
+import { CalendarioSemana } from "./calendario-semana";
 
 /* A diária padrão da casa: 12h, 07:00–19:00. Fora disso é escolha. */
 const formVazio = {
@@ -54,10 +56,22 @@ const formVazio = {
   novoCliente: false,
   novoClienteNome: "",
   novoClienteTelefone: "",
+  valorDiaria: "",
+  desconto: "",
 };
 
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
 const horaCurta = (h: string) => h.slice(0, 5);
+const brl = (cents: number) =>
+  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const paraCents = (reais: string) =>
+  reais.trim() === "" ? null : Math.round(Number(reais.replace(",", ".")) * 100);
+const diasEntre = (inicio: string, fim: string) =>
+  Math.round(
+    (new Date(fim + "T00:00Z").getTime() -
+      new Date(inicio + "T00:00Z").getTime()) /
+      86400000
+  ) + 1;
 
 export function ReservasClient() {
   const utils = trpc.useUtils();
@@ -105,8 +119,22 @@ export function ReservasClient() {
       });
       clienteId = cliente.id;
     }
-    criar.mutate({ ...consulta, clienteId });
+    criar.mutate({
+      ...consulta,
+      clienteId,
+      valorDiariaCents: paraCents(form.valorDiaria),
+      descontoCents: paraCents(form.desconto) ?? 0,
+    });
   }
+
+  const diasEscolhidos = form.dataInicio
+    ? diasEntre(form.dataInicio, form.dataFim || form.dataInicio)
+    : 0;
+  const diariaCents = paraCents(form.valorDiaria);
+  const totalPrevisto =
+    diariaCents !== null && diasEscolhidos > 0
+      ? diariaCents * diasEscolhidos - (paraCents(form.desconto) ?? 0)
+      : null;
 
   const mudanca = {
     onSuccess: () => utils.reservas.listar.invalidate(),
@@ -276,6 +304,49 @@ export function ReservasClient() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="valorDiaria">Diária (R$)</Label>
+                  <Input
+                    id="valorDiaria"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="a negociar"
+                    value={form.valorDiaria}
+                    onChange={(e) =>
+                      setForm({ ...form, valorDiaria: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="desconto">Desconto (R$)</Label>
+                  <Input
+                    id="desconto"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.desconto}
+                    onChange={(e) =>
+                      setForm({ ...form, desconto: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              {totalPrevisto !== null && (
+                <p className="text-sm text-muted-foreground">
+                  {diasEscolhidos}{" "}
+                  {diasEscolhidos === 1 ? "diária" : "diárias"} ·{" "}
+                  <span
+                    className={
+                      totalPrevisto < 0 ? "text-destructive" : "text-foreground"
+                    }
+                  >
+                    total {brl(totalPrevisto)}
+                  </span>
+                </p>
+              )}
+
               {formCompleto && disponibilidade.data && (
                 <p
                   role="status"
@@ -308,14 +379,30 @@ export function ReservasClient() {
 
       <Tabs defaultValue="mes">
         <TabsList>
+          <TabsTrigger value="semana">Semana</TabsTrigger>
           <TabsTrigger value="mes">Mês</TabsTrigger>
+          <TabsTrigger value="ano">Ano</TabsTrigger>
           <TabsTrigger value="lista">Lista</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="semana" className="mt-3">
+          <CalendarioSemana
+            reservas={reservas.data ?? []}
+            codigoEstudio={codigoEstudio}
+          />
+        </TabsContent>
 
         <TabsContent value="mes" className="mt-3">
           <CalendarioMes
             reservas={reservas.data ?? []}
             codigoEstudio={codigoEstudio}
+          />
+        </TabsContent>
+
+        <TabsContent value="ano" className="mt-3">
+          <CalendarioAno
+            reservas={reservas.data ?? []}
+            totalEstudios={(estudios.data ?? []).length}
           />
         </TabsContent>
 
@@ -334,6 +421,7 @@ export function ReservasClient() {
                     <TableHead>Data</TableHead>
                     <TableHead>Horário</TableHead>
                     <TableHead>Estúdios</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -359,6 +447,15 @@ export function ReservasClient() {
                       </TableCell>
                       <TableCell className="font-mono">
                         {r.estudioIds.map(codigoEstudio).join("+")}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap tabular-nums">
+                        {r.valorTotalCents !== null ? (
+                          brl(r.valorTotalCents)
+                        ) : (
+                          <span className="text-muted-foreground">
+                            a negociar
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {r.status === "confirmada" && (
