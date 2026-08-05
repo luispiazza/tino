@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { DB } from "../db";
 import { clientes, estudios, reservaEstudios, reservas } from "../db/schema";
 import { montarComanda } from "./comanda";
+import { itensDaReserva } from "../rental/disponibilidade";
 
 /*
  * Resolução dos portais: o token opaco é a credencial — um por portal,
@@ -33,11 +34,14 @@ export async function buscarReservaPorToken(
     .innerJoin(estudios, eq(reservaEstudios.estudioId, estudios.id))
     .where(eq(reservaEstudios.reservaId, linha.reserva.id));
 
-  const comanda = montarComanda(linha.reserva);
+  const extras = await itensDaReserva(db, linha.reserva.id);
+  const extrasCents = extras.reduce((s, e) => s + e.qtd * e.precoCents, 0);
+  const comanda = montarComanda(linha.reserva, extrasCents);
   return {
     ...linha.reserva,
     clienteNome: linha.clienteNome,
     estudios: est,
+    extras,
     dias: comanda.dias,
     comanda,
     valorTotalCents: comanda.totalCents,

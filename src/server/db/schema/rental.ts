@@ -3,9 +3,12 @@ import {
   serial,
   varchar,
   integer,
+  boolean,
+  timestamp,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { pessoas } from "./pessoas";
+import { reservas } from "./reservas";
 
 /*
  * Domínio 3 — catálogo ÚNICO de itens (a v1 mantinha dois em paralelo).
@@ -22,8 +25,12 @@ export const itens = pgTable("itens", {
   /* custo de repasse por unidade POR DIA — multiplica pelos dias da locação */
   custoFornecedorCentsDia: integer("custo_fornecedor_cents_dia"),
   fornecedorId: integer("fornecedor_id").references(() => pessoas.id),
+  /* nulo = ilimitado (consumível); número = estoque que trava o pedido */
   qtdTotal: integer("qtd_total"),
   qtdEsperada: integer("qtd_esperada"),
+  /* padrão do item, copiado como snapshot no pedido */
+  multaPorUnidadeCents: integer("multa_por_unidade_cents"),
+  ativo: boolean("ativo").notNull().default(true),
 });
 
 export const pedidoStatus = pgEnum("pedido_status", [
@@ -40,8 +47,13 @@ export const pedidoStatus = pgEnum("pedido_status", [
  */
 export const pedidos = pgTable("pedidos", {
   id: serial("id").primaryKey(),
-  reservaId: integer("reserva_id"),
+  reservaId: integer("reserva_id")
+    .notNull()
+    .references(() => reservas.id),
   status: pedidoStatus("status").notNull().default("aberto"),
+  criadoEm: timestamp("criado_em", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const pedidoItens = pgTable("pedido_itens", {

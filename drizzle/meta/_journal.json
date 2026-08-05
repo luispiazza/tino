@@ -50,6 +50,13 @@
       "when": 1785952219689,
       "tag": "0006_timestamptz",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785953288344,
+      "tag": "0007_rental",
+      "breakpoints": true
     }
   ]
 }

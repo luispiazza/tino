@@ -15,6 +15,7 @@ import {
 import { gerarTokenPortal, proximoCodigo } from "../reservas/codigo";
 import { diasDaReserva, validarValores } from "../reservas/valores";
 import { montarComanda } from "../reservas/comanda";
+import { itensDaReserva, totalExtrasCents } from "../rental/disponibilidade";
 import { auditar } from "../auditoria";
 
 const dataISO = z.string().date();
@@ -152,14 +153,21 @@ export const reservasRouter = router({
             )
           )
       : [];
-    return lista.map((r) => ({
-      ...r,
-      estudioIds: juncao
-        .filter((j) => j.reservaId === r.id)
-        .map((j) => j.estudioId),
-      comanda: montarComanda(r),
-      valorTotalCents: montarComanda(r).totalCents,
-    }));
+    const extras = await totalExtrasCents(
+      ctx.db,
+      lista.map((r) => r.id)
+    );
+    return lista.map((r) => {
+      const comanda = montarComanda(r, extras.get(r.id) ?? 0);
+      return {
+        ...r,
+        estudioIds: juncao
+          .filter((j) => j.reservaId === r.id)
+          .map((j) => j.estudioId),
+        comanda,
+        valorTotalCents: comanda.totalCents,
+      };
+    });
   }),
 
   /*
@@ -248,14 +256,20 @@ export const reservasRouter = router({
         .from(cobrancas)
         .where(eq(cobrancas.reservaId, input.id))
         .orderBy(desc(cobrancas.criadaEm));
+      const extrasDaReserva = await itensDaReserva(ctx.db, input.id);
+      const comanda = montarComanda(
+        linha.reserva,
+        extrasDaReserva.reduce((s, e) => s + e.qtd * e.precoCents, 0)
+      );
       return {
         ...linha.reserva,
         clienteNome: linha.clienteNome,
         clienteTelefone: linha.clienteTelefone,
         estudioIds,
         cobrancas: cobrancasDaReserva,
-        comanda: montarComanda(linha.reserva),
-        valorTotalCents: montarComanda(linha.reserva).totalCents,
+        extras: extrasDaReserva,
+        comanda,
+        valorTotalCents: comanda.totalCents,
       };
     }),
 

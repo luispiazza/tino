@@ -14,6 +14,7 @@ import {
   StatusReserva,
 } from "../../ficha";
 import { ComandaClient } from "./comanda-client";
+import { ExtrasClient } from "./extras-client";
 
 export const dynamic = "force-dynamic";
 
@@ -62,9 +63,23 @@ export default async function PortalProdutor({
         </p>
       )}
 
-      <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-        Extras e fechamento de comanda entram aqui nas próximas semanas.
-      </p>
+      {reserva.extras.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border p-4">
+          <h2 className="text-sm font-medium">Já pedido</h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {reserva.extras.map((e, i) => (
+              <li key={i} className="flex justify-between gap-3">
+                <span className="text-muted-foreground">
+                  {e.qtd}× {e.nomeItem}
+                </span>
+                <span className="tabular-nums">{brl(e.qtd * e.precoCents)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {reserva.status !== "cancelada" && <ExtrasClient token={token} />}
 
       {reserva.valorTotalCents !== null && (
         <div className="fixed inset-x-0 bottom-0 border-t bg-card/95 backdrop-blur">
@@ -73,6 +88,8 @@ export default async function PortalProdutor({
               {reserva.dias} {reserva.dias === 1 ? "diária" : "diárias"}
               {reserva.comanda.horasExtras > 0 &&
                 ` + ${reserva.comanda.horasExtras}h extra`}
+              {reserva.comanda.extrasCents > 0 &&
+                ` + ${brl(reserva.comanda.extrasCents)} em extras`}
               {reserva.descontoCents > 0 &&
                 ` − ${brl(reserva.descontoCents)}`}
             </span>

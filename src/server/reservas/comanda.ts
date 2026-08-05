@@ -37,21 +37,25 @@ export interface Comanda {
   diariasCents: number | null;
   horasExtras: number;
   horaExtraCents: number | null;
+  extrasCents: number;
   descontoCents: number;
   totalCents: number | null;
   /* houve hora extra e ninguém definiu o preço — a tela precisa dizer */
   horaExtraSemPreco: boolean;
 }
 
-export function montarComanda(reserva: {
-  dataInicio: string;
-  dataFim: string;
-  horaFim: string;
-  valorDiariaCents: number | null;
-  valorHoraExtraCents: number | null;
-  descontoCents: number;
-  checkOutEm: Date | null;
-}): Comanda {
+export function montarComanda(
+  reserva: {
+    dataInicio: string;
+    dataFim: string;
+    horaFim: string;
+    valorDiariaCents: number | null;
+    valorHoraExtraCents: number | null;
+    descontoCents: number;
+    checkOutEm: Date | null;
+  },
+  extrasCents = 0
+): Comanda {
   const dias = diasDaReserva(reserva.dataInicio, reserva.dataFim);
   const horas = horasExtras(reserva.dataFim, reserva.horaFim, reserva.checkOutEm);
   const diariasCents =
@@ -66,13 +70,14 @@ export function montarComanda(reserva: {
   const total =
     diariasCents === null
       ? null
-      : diariasCents + (horaExtraCents ?? 0) - reserva.descontoCents;
+      : diariasCents + (horaExtraCents ?? 0) + extrasCents - reserva.descontoCents;
 
   return {
     dias,
     diariasCents,
     horasExtras: horas,
     horaExtraCents,
+    extrasCents,
     descontoCents: reserva.descontoCents,
     totalCents: total,
     horaExtraSemPreco: horas > 0 && reserva.valorHoraExtraCents === null,

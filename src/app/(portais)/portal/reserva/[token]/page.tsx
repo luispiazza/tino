@@ -65,6 +65,14 @@ export default async function PortalReserva({
                     </dd>
                   </>
                 )}
+                {reserva.comanda.extrasCents > 0 && (
+                  <>
+                    <dt className="text-muted-foreground">Extras</dt>
+                    <dd className="text-right">
+                      {brl(reserva.comanda.extrasCents)}
+                    </dd>
+                  </>
+                )}
                 {reserva.descontoCents > 0 && (
                   <>
                     <dt className="text-muted-foreground">Desconto</dt>
