@@ -1,8 +1,16 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { router, socioProcedure } from "../trpc";
-import { clientes, cobrancas, reservas } from "../db/schema";
+import {
+  categoria,
+  clientes,
+  cobrancas,
+  contasRecorrentes,
+  lancamentos,
+  naturezaObrigacao,
+  reservas,
+} from "../db/schema";
 import { diasDaReserva, totalCents } from "../reservas/valores";
 import {
   somarDias,
@@ -153,9 +161,309 @@ export const financeiroRouter = router({
       return cobranca;
     }),
 
-  agendaDeObrigacoes: socioProcedure.query(async () => {
-    return [];
+  /*
+   * O painel de vigilância: tudo que tem data e ainda não aconteceu —
+   * a receber (cobranças com previsão) e a pagar (lançamentos com
+   * vencimento) — numa lista só, ordenada, com o atraso na cara.
+   */
+  agendaDeObrigacoes: socioProcedure.query(async ({ ctx }) => {
+    const hoje = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date());
+
+    const aReceber = await ctx.db
+      .select({
+        cobranca: cobrancas,
+        reservaCodigo: reservas.codigo,
+        clienteNome: clientes.nome,
+      })
+      .from(cobrancas)
+      .leftJoin(reservas, eq(cobrancas.reservaId, reservas.id))
+      .leftJoin(clientes, eq(reservas.clienteId, clientes.id))
+      .where(
+        and(
+          inArray(cobrancas.estado, [
+            "aguardando_po",
+            "po_recebido",
+            "emitida",
+          ]),
+          isNotNull(cobrancas.previsaoRecebimento)
+        )
+      );
+
+    const aPagar = await ctx.db
+      .select()
+      .from(lancamentos)
+      .where(
+        and(
+          inArray(lancamentos.estado, ["previsto", "confirmado"]),
+          isNotNull(lancamentos.dataVencimento)
+        )
+      );
+
+    const itens = [
+      ...aReceber.map(({ cobranca, reservaCodigo, clienteNome }) => ({
+        tipo: "receber" as const,
+        id: cobranca.id,
+        descricao: `${reservaCodigo ?? "cobrança"}${clienteNome ? ` · ${clienteNome}` : ""}`,
+        valorCents: cobranca.valorCents as number | null,
+        data: cobranca.previsaoRecebimento!,
+        estado: cobranca.estado as string,
+      })),
+      ...aPagar.map((l) => ({
+        tipo: "pagar" as const,
+        id: l.id,
+        descricao: l.descricao,
+        valorCents: l.valorCents,
+        data: l.dataVencimento!,
+        estado: l.estado as string,
+      })),
+    ]
+      .map((i) => ({ ...i, atrasada: i.data < hoje }))
+      .sort((a, b) => a.data.localeCompare(b.data));
+
+    return { hoje, itens };
   }),
+
+  /* ---------- Despesas: recorrentes e lançamentos ---------- */
+
+  listarRecorrentes: socioProcedure.query(({ ctx }) =>
+    ctx.db
+      .select()
+      .from(contasRecorrentes)
+      .orderBy(asc(contasRecorrentes.descricao))
+  ),
+
+  criarRecorrente: socioProcedure
+    .input(
+      z.object({
+        descricao: z.string().min(1).max(200),
+        categoria: z.enum(categoria.enumValues),
+        natureza: z.enum(naturezaObrigacao.enumValues),
+        valorEsperadoCents: z.number().int().positive().nullish(),
+        diaVencimento: z.number().int().min(1).max(31).nullish(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [conta] = await ctx.db
+        .insert(contasRecorrentes)
+        .values(input)
+        .returning();
+      await auditar(ctx.db, ctx.session, "criar", "recorrente", conta.id, {
+        descricao: conta.descricao,
+      });
+      return conta;
+    }),
+
+  atualizarRecorrente: socioProcedure
+    .input(
+      z.object({
+        id: z.number().int(),
+        valorEsperadoCents: z.number().int().positive().nullish(),
+        diaVencimento: z.number().int().min(1).max(31).nullish(),
+        ativo: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...dados } = input;
+      const [conta] = await ctx.db
+        .update(contasRecorrentes)
+        .set(dados)
+        .where(eq(contasRecorrentes.id, id))
+        .returning();
+      if (!conta) throw new TRPCError({ code: "NOT_FOUND" });
+      await auditar(ctx.db, ctx.session, "atualizar", "recorrente", conta.id, {
+        descricao: conta.descricao,
+        campos: Object.keys(dados),
+      });
+      return conta;
+    }),
+
+  /*
+   * A materialização do mês: cada recorrente ativa vira UM lançamento
+   * `previsto` no mês visível — idempotente, o sócio confirma em dez
+   * segundos, nunca digita planilha. (Vira cron junto do gerador da
+   * Fase 4; até lá roda ao abrir a tela.)
+   */
+  materializarMes: socioProcedure
+    .input(z.object({ ano: z.number().int(), mes: z.number().int().min(1).max(12) }))
+    .mutation(async ({ ctx, input }) => {
+      const prefixo = `${input.ano}-${String(input.mes).padStart(2, "0")}`;
+      const inicio = `${prefixo}-01`;
+      const ultimoDia = new Date(input.ano, input.mes, 0).getDate();
+      const fim = `${prefixo}-${String(ultimoDia).padStart(2, "0")}`;
+      const ativas = await ctx.db
+        .select()
+        .from(contasRecorrentes)
+        .where(eq(contasRecorrentes.ativo, true));
+      const existentes = await ctx.db
+        .select({ recorrenteId: lancamentos.recorrenteId })
+        .from(lancamentos)
+        .where(
+          and(
+            isNotNull(lancamentos.recorrenteId),
+            gte(lancamentos.dataVencimento, inicio),
+            lte(lancamentos.dataVencimento, fim)
+          )
+        );
+      const jaTem = new Set(existentes.map((e) => e.recorrenteId));
+      const novas = ativas.filter((c) => !jaTem.has(c.id));
+      let criados = 0;
+      for (const conta of novas) {
+        const dia = Math.min(
+          conta.diaVencimento ?? 28,
+          new Date(input.ano, input.mes, 0).getDate()
+        );
+        await ctx.db.insert(lancamentos).values({
+          descricao: conta.descricao,
+          sentido: "saida",
+          categoria: conta.categoria,
+          natureza: conta.natureza,
+          estado: "previsto",
+          /* nulo até a conta chegar — nunca um número inventado */
+          valorCents: conta.valorEsperadoCents,
+          dataVencimento: `${prefixo}-${String(dia).padStart(2, "0")}`,
+          recorrenteId: conta.id,
+        });
+        criados++;
+      }
+      return { criados };
+    }),
+
+  listarLancamentos: socioProcedure
+    .input(
+      z.object({ ano: z.number().int(), mes: z.number().int().min(1).max(12) })
+    )
+    .query(({ ctx, input }) => {
+      const prefixo = `${input.ano}-${String(input.mes).padStart(2, "0")}`;
+      const ultimoDia = new Date(input.ano, input.mes, 0).getDate();
+      return ctx.db
+        .select()
+        .from(lancamentos)
+        .where(
+          and(
+            gte(lancamentos.dataVencimento, `${prefixo}-01`),
+            lte(
+              lancamentos.dataVencimento,
+              `${prefixo}-${String(ultimoDia).padStart(2, "0")}`
+            )
+          )
+        )
+        .orderBy(asc(lancamentos.dataVencimento));
+    }),
+
+  criarLancamento: socioProcedure
+    .input(
+      z.object({
+        descricao: z.string().min(1).max(200),
+        sentido: z.enum(["entrada", "saida"]).default("saida"),
+        categoria: z.enum(categoria.enumValues),
+        natureza: z
+          .enum(naturezaObrigacao.enumValues)
+          .default("data_e_valor_conhecidos"),
+        valorCents: z.number().int().positive().nullish(),
+        dataVencimento: z.string().date().nullish(),
+        dataServico: z.string().date().nullish(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [lancamento] = await ctx.db
+        .insert(lancamentos)
+        .values(input)
+        .returning();
+      await auditar(ctx.db, ctx.session, "criar", "lancamento", lancamento.id, {
+        descricao: lancamento.descricao,
+        valorCents: lancamento.valorCents,
+      });
+      return lancamento;
+    }),
+
+  /*
+   * previsto → confirmado (a conta chegou, valor real) → pago (caixa).
+   * Confirmar exige valor; pagar exige a data — as duas datas, sempre.
+   */
+  confirmarLancamento: socioProcedure
+    .input(
+      z.object({
+        id: z.number().int(),
+        valorCents: z.number().int().positive(),
+        dataVencimento: z.string().date().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [existente] = await ctx.db
+        .select()
+        .from(lancamentos)
+        .where(eq(lancamentos.id, input.id));
+      if (!existente) throw new TRPCError({ code: "NOT_FOUND" });
+      if (existente.estado !== "previsto") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Só lançamento previsto se confirma",
+        });
+      }
+      const [lancamento] = await ctx.db
+        .update(lancamentos)
+        .set({
+          estado: "confirmado",
+          valorCents: input.valorCents,
+          ...(input.dataVencimento
+            ? { dataVencimento: input.dataVencimento }
+            : {}),
+        })
+        .where(eq(lancamentos.id, input.id))
+        .returning();
+      await auditar(
+        ctx.db,
+        ctx.session,
+        "confirmar",
+        "lancamento",
+        lancamento.id,
+        { descricao: lancamento.descricao, valorCents: input.valorCents }
+      );
+      return lancamento;
+    }),
+
+  pagarLancamento: socioProcedure
+    .input(
+      z.object({ id: z.number().int(), dataPagamento: z.string().date().optional() })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [existente] = await ctx.db
+        .select()
+        .from(lancamentos)
+        .where(eq(lancamentos.id, input.id));
+      if (!existente) throw new TRPCError({ code: "NOT_FOUND" });
+      if (existente.estado === "pago") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Lançamento já pago",
+        });
+      }
+      if (existente.valorCents === null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Confirme o valor antes de pagar",
+        });
+      }
+      const [lancamento] = await ctx.db
+        .update(lancamentos)
+        .set({
+          estado: "pago",
+          dataPagamento:
+            input.dataPagamento ??
+            new Intl.DateTimeFormat("en-CA", {
+              timeZone: "America/Sao_Paulo",
+            }).format(new Date()),
+        })
+        .where(eq(lancamentos.id, input.id))
+        .returning();
+      await auditar(ctx.db, ctx.session, "pagar", "lancamento", lancamento.id, {
+        descricao: lancamento.descricao,
+        valorCents: lancamento.valorCents,
+      });
+      return lancamento;
+    }),
 
   importarExtrato: socioProcedure
     .input(z.object({ banco: z.string(), csv: z.string() }))

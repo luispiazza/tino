@@ -18,6 +18,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { DespesasClient } from "./despesas-client";
+import { ObrigacoesClient } from "./obrigacoes-client";
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -60,10 +68,37 @@ function BadgeEstado({ estado }: { estado: string }) {
 }
 
 export function FinanceiroClient() {
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-semibold tracking-tight">Financeiro</h1>
+      <Tabs defaultValue="obrigacoes">
+        <TabsList>
+          <TabsTrigger value="obrigacoes">Obrigações</TabsTrigger>
+          <TabsTrigger value="cobrancas">Cobranças</TabsTrigger>
+          <TabsTrigger value="despesas">Despesas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="obrigacoes" className="mt-3">
+          <ObrigacoesClient />
+        </TabsContent>
+        <TabsContent value="cobrancas" className="mt-3">
+          <CobrancasClient />
+        </TabsContent>
+        <TabsContent value="despesas" className="mt-3">
+          <DespesasClient />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function CobrancasClient() {
   const utils = trpc.useUtils();
   const lista = trpc.financeiro.listarCobrancas.useQuery();
   const avancar = trpc.financeiro.avancarCobranca.useMutation({
-    onSuccess: () => utils.financeiro.listarCobrancas.invalidate(),
+    onSuccess: () => {
+      utils.financeiro.listarCobrancas.invalidate();
+      utils.financeiro.agendaDeObrigacoes.invalidate();
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -74,17 +109,14 @@ export function FinanceiroClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Financeiro</h1>
-        {abertas.length > 0 && (
-          <p className="text-sm text-muted-foreground">
-            a receber:{" "}
-            <span className="font-medium text-foreground tabular-nums">
-              {brl(aReceberCents)}
-            </span>
-          </p>
-        )}
-      </div>
+      {abertas.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          a receber:{" "}
+          <span className="font-medium text-foreground tabular-nums">
+            {brl(aReceberCents)}
+          </span>
+        </p>
+      )}
 
       {lista.data?.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

@@ -1,13 +1,19 @@
+import { redirect } from "next/navigation";
+import { sessaoAtual } from "@/server/sessao-server";
+import { PainelClient } from "./painel-client";
+
 /*
- * Admin — Domínio 8. A Home dos sócios é o painel de vigilância:
- * Bloco 1 "Precisa de você" · Bloco 2 "Hoje e amanhã" ·
- * Bloco 3 "O mês" · Bloco 4 "Tendência". Exige login (matriz de permissões).
+ * Admin — Domínio 8. A Home dos sócios é o painel de vigilância;
+ * o funcionário não tem financeiro para vigiar — o dia dele é o Dia.
  */
-export default function AdminHome() {
+export default async function AdminHome() {
+  const session = await sessaoAtual();
+  if (session?.papel === "funcionario") redirect("/admin/dia");
+
   return (
-    <main className="p-6">
-      <h1 className="text-xl font-semibold">Painel</h1>
-      <p className="mt-2 text-[--muted]">Tudo em dia.</p>
+    <main className="mx-auto max-w-5xl p-4 sm:p-6">
+      <h1 className="mb-4 text-xl font-semibold tracking-tight">Painel</h1>
+      <PainelClient />
     </main>
   );
 }
