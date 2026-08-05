@@ -1,6 +1,8 @@
 import { Vitrine } from "./vitrine";
 
-export const revalidate = 60;
+/* dinâmico: o builder do Railway não alcança o Postgres interno,
+ * então pré-render de build quebraria o deploy — SSR por request */
+export const dynamic = "force-dynamic";
 
 /*
  * Vitrine pública — Domínio 6.

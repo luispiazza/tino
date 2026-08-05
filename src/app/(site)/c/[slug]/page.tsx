@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { campanhas } from "@/server/db/schema";
 import { Vitrine } from "../../vitrine";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 /*
  * Página de campanha — /c/[slug].
