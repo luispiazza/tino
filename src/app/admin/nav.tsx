@@ -13,8 +13,10 @@ const areas: { href: string; rotulo: string; papeis: Papel[] }[] = [
   { href: "/admin", rotulo: "Painel", papeis: ["socio", "funcionario"] },
   { href: "/admin/dia", rotulo: "Dia", papeis: ["socio", "funcionario"] },
   { href: "/admin/reservas", rotulo: "Reservas", papeis: ["socio"] },
+  { href: "/admin/financeiro", rotulo: "Financeiro", papeis: ["socio"] },
   { href: "/admin/estudios", rotulo: "Estúdios", papeis: ["socio"] },
   { href: "/admin/campanhas", rotulo: "Campanhas", papeis: ["socio"] },
+  { href: "/admin/auditoria", rotulo: "Auditoria", papeis: ["socio"] },
 ];
 
 export function NavAdmin({ papel }: { papel: Papel }) {

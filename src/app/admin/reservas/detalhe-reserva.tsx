@@ -24,6 +24,15 @@ const horaCurta = (h: string) => h.slice(0, 5);
 const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const ROTULO_COBRANCA: Record<string, string> = {
+  aguardando_po: "aguardando PO",
+  po_recebido: "PO recebido",
+  emitida: "emitida",
+  paga: "paga",
+  nf_emitida: "NF emitida",
+  conciliada: "conciliada",
+};
+
 function telefoneParaWa(telefone: string): string | null {
   const digitos = telefone.replace(/\D/g, "");
   if (digitos.length === 10 || digitos.length === 11) return `55${digitos}`;
@@ -56,6 +65,14 @@ export function DetalheReserva({
   const confirmar = trpc.reservas.confirmar.useMutation(aoMudar);
   const cancelar = trpc.reservas.cancelar.useMutation(aoMudar);
   const marcarEnviado = trpc.reservas.marcarWhatsappEnviado.useMutation(aoMudar);
+  const criarCobranca = trpc.financeiro.criarCobranca.useMutation({
+    ...aoMudar,
+    onSuccess: () => {
+      aoMudar.onSuccess();
+      utils.financeiro.listarCobrancas.invalidate();
+      toast.success("Cobrança gerada");
+    },
+  });
 
   const r = detalhe.data;
 
@@ -218,6 +235,68 @@ export function DetalheReserva({
               >
                 Ver portal do produtor
               </Button>
+            </div>
+
+            <Separator />
+
+            {/* Cobrança — faturar tudo no fechamento; a esteira vive no Financeiro */}
+            <div className="flex flex-col gap-2">
+              {r.cobrancas.filter((c) => c.estado !== "cancelada").length >
+              0 ? (
+                r.cobrancas
+                  .filter((c) => c.estado !== "cancelada")
+                  .map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span className="text-muted-foreground">
+                        Cobrança de{" "}
+                        <span className="text-foreground tabular-nums">
+                          {brl(c.valorCents)}
+                        </span>
+                        {c.previsaoRecebimento &&
+                          ` · previsão ${c.previsaoRecebimento
+                            .split("-")
+                            .reverse()
+                            .join("/")}`}
+                      </span>
+                      <Badge
+                        className={
+                          ["paga", "nf_emitida", "conciliada"].includes(
+                            c.estado
+                          )
+                            ? "bg-[--ok]/15 text-[--ok]"
+                            : "bg-[--attention]/15 text-[--attention]"
+                        }
+                      >
+                        {ROTULO_COBRANCA[c.estado] ?? c.estado}
+                      </Badge>
+                    </div>
+                  ))
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Sem cobrança gerada
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={
+                      r.valorTotalCents === null || criarCobranca.isPending
+                    }
+                    onClick={() => criarCobranca.mutate({ reservaId: r.id })}
+                  >
+                    Gerar cobrança
+                  </Button>
+                </div>
+              )}
+              {r.valorTotalCents === null &&
+                r.cobrancas.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Defina o valor da diária para gerar a cobrança.
+                  </p>
+                )}
             </div>
 
             {/* Gerenciar — cancelar longe da ação principal (lição D1) */}

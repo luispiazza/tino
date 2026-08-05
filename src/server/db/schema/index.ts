@@ -1,3 +1,4 @@
+export * from "./auditoria";
 export * from "./auth";
 export * from "./estudios";
 export * from "./reservas";

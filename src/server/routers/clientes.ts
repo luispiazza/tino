@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { asc, eq } from "drizzle-orm";
 import { socioProcedure, router } from "../trpc";
 import { clientes } from "../db/schema";
+import { auditar } from "../auditoria";
 
 const clienteInput = z.object({
   nome: z.string().min(1).max(120),
@@ -21,6 +22,9 @@ export const clientesRouter = router({
     .input(clienteInput)
     .mutation(async ({ ctx, input }) => {
       const [cliente] = await ctx.db.insert(clientes).values(input).returning();
+      await auditar(ctx.db, ctx.session, "criar", "cliente", cliente.id, {
+        nome: cliente.nome,
+      });
       return cliente;
     }),
 
@@ -34,6 +38,10 @@ export const clientesRouter = router({
         .where(eq(clientes.id, id))
         .returning();
       if (!cliente) throw new TRPCError({ code: "NOT_FOUND" });
+      await auditar(ctx.db, ctx.session, "atualizar", "cliente", cliente.id, {
+        nome: cliente.nome,
+        campos: Object.keys(dados),
+      });
       return cliente;
     }),
 });

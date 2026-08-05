@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { desc, eq, inArray } from "drizzle-orm";
-import { publicProcedure, socioProcedure, router } from "../trpc";
-import { clientes, reservaEstudios, reservas } from "../db/schema";
+import { and, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
+import {
+  protectedProcedure,
+  publicProcedure,
+  socioProcedure,
+  router,
+} from "../trpc";
+import { clientes, cobrancas, reservaEstudios, reservas } from "../db/schema";
 import {
   buscarConflitos,
   complementaresSemBase,
@@ -13,6 +18,7 @@ import {
   totalCents,
   validarValores,
 } from "../reservas/valores";
+import { auditar } from "../auditoria";
 
 const dataISO = z.string().date();
 const hora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "use HH:MM");
@@ -112,6 +118,14 @@ export const reservasRouter = router({
             estudioId,
           }))
         );
+        await auditar(tx, ctx.session, "criar", "reserva", reserva.id, {
+          codigo,
+          dataInicio: input.dataInicio,
+          dataFim: input.dataFim,
+          estudioIds: input.estudioIds,
+          valorDiariaCents: input.valorDiariaCents ?? null,
+          descontoCents: input.descontoCents,
+        });
         return { ...reserva, estudioIds: input.estudioIds };
       });
     }),
@@ -152,6 +166,66 @@ export const reservasRouter = router({
     }));
   }),
 
+  /*
+   * A agenda do dia — o que a matriz dá ao funcionário: shootings de
+   * hoje e o aviso de amanhã (a virada). SEM valores e SEM tokens.
+   */
+  agendaDoDia: protectedProcedure.query(async ({ ctx }) => {
+    /* "hoje" no fuso do estúdio, não no do servidor */
+    const hojeISO = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date());
+    const amanhaISO = new Date(
+      new Date(hojeISO + "T12:00Z").getTime() + 24 * 60 * 60 * 1000
+    )
+      .toISOString()
+      .slice(0, 10);
+
+    const buscarDia = async (data: string) => {
+      const linhas = await ctx.db
+        .select({
+          id: reservas.id,
+          codigo: reservas.codigo,
+          status: reservas.status,
+          horaInicio: reservas.horaInicio,
+          horaFim: reservas.horaFim,
+          clienteNome: clientes.nome,
+        })
+        .from(reservas)
+        .leftJoin(clientes, eq(reservas.clienteId, clientes.id))
+        .where(
+          and(
+            lte(reservas.dataInicio, data),
+            gte(reservas.dataFim, data),
+            ne(reservas.status, "cancelada")
+          )
+        )
+        .orderBy(reservas.horaInicio);
+      if (linhas.length === 0) return [];
+      const juncao = await ctx.db
+        .select()
+        .from(reservaEstudios)
+        .where(
+          inArray(
+            reservaEstudios.reservaId,
+            linhas.map((l) => l.id)
+          )
+        );
+      return linhas.map((l) => ({
+        ...l,
+        estudioIds: juncao
+          .filter((j) => j.reservaId === l.id)
+          .map((j) => j.estudioId),
+      }));
+    };
+
+    const [hoje, amanha] = await Promise.all([
+      buscarDia(hojeISO),
+      buscarDia(amanhaISO),
+    ]);
+    return { data: hojeISO, hoje, amanha };
+  }),
+
   /* Detalhe para o painel: única rota que expõe os tokens dos portais. */
   obter: socioProcedure
     .input(z.object({ id: z.number().int() }))
@@ -173,11 +247,17 @@ export const reservasRouter = router({
           .from(reservaEstudios)
           .where(eq(reservaEstudios.reservaId, input.id))
       ).map((j) => j.estudioId);
+      const cobrancasDaReserva = await ctx.db
+        .select()
+        .from(cobrancas)
+        .where(eq(cobrancas.reservaId, input.id))
+        .orderBy(desc(cobrancas.criadaEm));
       return {
         ...linha.reserva,
         clienteNome: linha.clienteNome,
         clienteTelefone: linha.clienteTelefone,
         estudioIds,
+        cobrancas: cobrancasDaReserva,
         valorTotalCents: totalCents(
           linha.reserva.valorDiariaCents,
           linha.reserva.descontoCents,
@@ -199,6 +279,14 @@ export const reservasRouter = router({
         .where(eq(reservas.id, input.id))
         .returning();
       if (!reserva) throw new TRPCError({ code: "NOT_FOUND" });
+      await auditar(
+        ctx.db,
+        ctx.session,
+        "enviar_whatsapp",
+        "reserva",
+        reserva.id,
+        { codigo: reserva.codigo }
+      );
       return reserva;
     }),
 
@@ -229,6 +317,24 @@ export const reservasRouter = router({
         })
         .where(eq(reservas.id, input.id))
         .returning();
+      await auditar(
+        ctx.db,
+        ctx.session,
+        "atualizar_valores",
+        "reserva",
+        reserva.id,
+        {
+          codigo: reserva.codigo,
+          de: {
+            valorDiariaCents: existente.valorDiariaCents,
+            descontoCents: existente.descontoCents,
+          },
+          para: {
+            valorDiariaCents: input.valorDiariaCents,
+            descontoCents: input.descontoCents,
+          },
+        }
+      );
       return reserva;
     }),
 
@@ -241,18 +347,44 @@ export const reservasRouter = router({
         .where(eq(reservas.id, input.id))
         .returning();
       if (!reserva) throw new TRPCError({ code: "NOT_FOUND" });
+      await auditar(ctx.db, ctx.session, "confirmar", "reserva", reserva.id, {
+        codigo: reserva.codigo,
+      });
       return reserva;
     }),
 
   cancelar: socioProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const [reserva] = await ctx.db
-        .update(reservas)
-        .set({ status: "cancelada" })
-        .where(eq(reservas.id, input.id))
-        .returning();
-      if (!reserva) throw new TRPCError({ code: "NOT_FOUND" });
-      return reserva;
+      return ctx.db.transaction(async (tx) => {
+        const [reserva] = await tx
+          .update(reservas)
+          .set({ status: "cancelada" })
+          .where(eq(reservas.id, input.id))
+          .returning();
+        if (!reserva) throw new TRPCError({ code: "NOT_FOUND" });
+        /* reserva cancelada deixa de entrar no financeiro (Fase 2):
+         * cobrança aberta cancela junto; paga em diante fica — dinheiro
+         * que entrou é história, não previsão */
+        const canceladas = await tx
+          .update(cobrancas)
+          .set({ estado: "cancelada" })
+          .where(
+            and(
+              eq(cobrancas.reservaId, reserva.id),
+              inArray(cobrancas.estado, [
+                "aguardando_po",
+                "po_recebido",
+                "emitida",
+              ])
+            )
+          )
+          .returning({ id: cobrancas.id });
+        await auditar(tx, ctx.session, "cancelar", "reserva", reserva.id, {
+          codigo: reserva.codigo,
+          cobrancasCanceladas: canceladas.map((c) => c.id),
+        });
+        return reserva;
+      });
     }),
 });

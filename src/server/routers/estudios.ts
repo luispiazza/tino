@@ -4,6 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { publicProcedure, socioProcedure, router } from "../trpc";
 import { estudioDependencias, estudios } from "../db/schema";
 import type { DB } from "../db";
+import { auditar } from "../auditoria";
 
 const estudioInput = z.object({
   codigo: z.string().min(1).max(8),
@@ -45,6 +46,9 @@ export const estudiosRouter = router({
           }))
         );
       }
+      await auditar(tx, ctx.session, "criar", "estudio", estudio.id, {
+        codigo: estudio.codigo,
+      });
       return estudio;
     });
   }),
@@ -73,6 +77,10 @@ export const estudiosRouter = router({
             );
           }
         }
+        await auditar(tx, ctx.session, "atualizar", "estudio", estudio.id, {
+          codigo: estudio.codigo,
+          campos: Object.keys(dados),
+        });
         return estudio;
       });
     }),

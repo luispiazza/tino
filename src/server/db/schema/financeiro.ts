@@ -46,6 +46,7 @@ export const cobrancas = pgTable("cobrancas", {
   dataPagamento: date("data_pagamento"),
   nfNumero: varchar("nf_numero", { length: 50 }),
   nfUrl: varchar("nf_url", { length: 300 }),
+  criadaEm: timestamp("criada_em").notNull().defaultNow(),
 });
 
 /* ---------- Categorias — dois eixos ---------- */
