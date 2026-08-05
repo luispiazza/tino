@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { db } from "@/server/db";
 import { estudios } from "@/server/db/schema";
 import type { Campanha } from "@/server/routers/campanhas";
@@ -12,6 +13,15 @@ import { MonteSeuTino } from "./monte-seu-tino";
  * Fotos e vídeo entram nos espaços já reservados quando o material
  * chegar; até lá o hero é tipográfico.
  */
+
+/* Fotos do acervo do estúdio (repo tino-estudio). Estúdio sem foto
+ * aparece sem imagem, nunca com placeholder genérico. */
+const FOTOS: Record<string, string> = {
+  A: "/fotos/estudio-a.jpg",
+  B: "/fotos/estudio-b.jpg",
+  C: "/fotos/estudio-c.jpg",
+  E: "/fotos/estudio-e.jpg",
+};
 
 /* As três que mais saem lideram (29/07). Vira cadastro quando as
  * combinações ganharem tela — por ora é conteúdo, não dado. */
@@ -41,17 +51,28 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-20 px-6 py-16 sm:py-24">
       {/* Hero — campanha troca vídeo e textos; sem campanha, o padrão */}
-      <header className="relative flex min-h-[40svh] flex-col justify-center gap-5">
-        {campanha?.heroVideoUrl && (
+      <header className="relative flex min-h-[60svh] flex-col justify-end gap-5 overflow-hidden rounded-2xl p-6 sm:min-h-[70svh] sm:p-10">
+        {campanha?.heroVideoUrl ? (
           <video
             src={campanha.heroVideoUrl}
             autoPlay
             muted
             loop
             playsInline
-            className="absolute inset-0 -z-10 h-full w-full rounded-2xl object-cover opacity-40"
+            className="absolute inset-0 -z-20 h-full w-full object-cover"
+          />
+        ) : (
+          <Image
+            src="/fotos/hero.jpg"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="-z-20 object-cover"
           />
         )}
+        {/* o texto precisa ganhar da foto, sempre */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/80 to-background/30" />
         <p className="text-sm tracking-widest text-muted-foreground uppercase">
           Estúdio de foto e vídeo · Vila Romana · São Paulo
         </p>
@@ -112,7 +133,18 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {[...principais, ...complementares].map((e) => (
-              <div key={e.id} className="rounded-2xl border p-6">
+              <div key={e.id} className="overflow-hidden rounded-2xl border">
+                {FOTOS[e.codigo] && (
+                  <Image
+                    src={FOTOS[e.codigo]}
+                    alt={`Estúdio ${e.codigo}`}
+                    width={1920}
+                    height={1080}
+                    sizes="(min-width: 640px) 50vw, 100vw"
+                    className="aspect-[16/10] w-full object-cover"
+                  />
+                )}
+                <div className="p-6">
                 <div className="flex items-baseline gap-3">
                   <span className="font-mono text-xl font-semibold">
                     {e.codigo}
@@ -134,6 +166,7 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
                     {e.fichaTecnica}
                   </p>
                 )}
+                </div>
               </div>
             ))}
           </div>
