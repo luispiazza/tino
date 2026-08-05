@@ -1,0 +1,1 @@
+ALTER TABLE "reservas" ADD COLUMN "whatsapp_enviado_em" timestamp;

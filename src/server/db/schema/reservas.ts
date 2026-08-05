@@ -43,6 +43,11 @@ export const reservas = pgTable("reservas", {
   valorDiariaCents: integer("valor_diaria_cents"),
   descontoCents: integer("desconto_cents").notNull().default(0),
   /*
+   * Estado de envio visível (lição da v1: existia no banco e só aparecia
+   * no hover). Nulo = nunca enviada ao cliente.
+   */
+  whatsappEnviadoEm: timestamp("whatsapp_enviado_em"),
+  /*
    * Tokens opacos, um por portal — a credencial, separada do código.
    * Revogáveis, expiram após o fechamento da comanda.
    */

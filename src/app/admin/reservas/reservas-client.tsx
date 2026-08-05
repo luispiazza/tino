@@ -12,12 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,6 +38,7 @@ import {
 import { CalendarioAno } from "./calendario-ano";
 import { CalendarioMes } from "./calendario-mes";
 import { CalendarioSemana } from "./calendario-semana";
+import { DetalheReserva } from "./detalhe-reserva";
 
 /* A diária padrão da casa: 12h, 07:00–19:00. Fora disso é escolha. */
 const formVazio = {
@@ -79,6 +74,7 @@ export function ReservasClient() {
   const estudios = trpc.estudios.listar.useQuery();
   const clientes = trpc.clientes.listar.useQuery();
   const [aberto, setAberto] = useState(false);
+  const [detalheId, setDetalheId] = useState<number | null>(null);
   const [form, setForm] = useState(formVazio);
 
   const formCompleto =
@@ -135,13 +131,6 @@ export function ReservasClient() {
     diariaCents !== null && diasEscolhidos > 0
       ? diariaCents * diasEscolhidos - (paraCents(form.desconto) ?? 0)
       : null;
-
-  const mudanca = {
-    onSuccess: () => utils.reservas.listar.invalidate(),
-    onError: (e: { message: string }) => toast.error(e.message),
-  };
-  const confirmar = trpc.reservas.confirmar.useMutation(mudanca);
-  const cancelar = trpc.reservas.cancelar.useMutation(mudanca);
 
   const porId = new Map((estudios.data ?? []).map((e) => [e.id, e]));
   const codigoEstudio = (id: number) => porId.get(id)?.codigo ?? "?";
@@ -423,12 +412,16 @@ export function ReservasClient() {
                     <TableHead>Estúdios</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead />
+                    <TableHead>Envio</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(reservas.data ?? []).map((r) => (
-                    <TableRow key={r.id}>
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer"
+                      onClick={() => setDetalheId(r.id)}
+                    >
                       <TableCell className="font-mono font-medium">
                         {r.codigo}
                       </TableCell>
@@ -477,37 +470,23 @@ export function ReservasClient() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {r.status === "pendente" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={confirmar.isPending}
-                              onClick={() => confirmar.mutate({ id: r.id })}
-                            >
-                              Confirmar
-                            </Button>
-                          )}
-                          {r.status !== "cancelada" && (
-                            /* cancelar fora do alcance imediato (lição D1) */
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={<Button variant="ghost" size="sm" />}
-                              >
-                                ⋯
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onClick={() => cancelar.mutate({ id: r.id })}
-                                >
-                                  Cancelar reserva
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
+                      <TableCell>
+                        {r.whatsappEnviadoEm ? (
+                          <Badge className="bg-[--ok]/15 text-[--ok]">
+                            enviada{" "}
+                            {new Date(r.whatsappEnviadoEm).toLocaleDateString(
+                              "pt-BR",
+                              { day: "2-digit", month: "2-digit" }
+                            )}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-muted-foreground"
+                          >
+                            não enviada
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -517,6 +496,12 @@ export function ReservasClient() {
           )}
         </TabsContent>
       </Tabs>
+
+      <DetalheReserva
+        reservaId={detalheId}
+        aoFechar={() => setDetalheId(null)}
+        codigoEstudio={codigoEstudio}
+      />
     </div>
   );
 }

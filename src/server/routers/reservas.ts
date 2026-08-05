@@ -152,6 +152,56 @@ export const reservasRouter = router({
     }));
   }),
 
+  /* Detalhe para o painel: única rota que expõe os tokens dos portais. */
+  obter: socioProcedure
+    .input(z.object({ id: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const [linha] = await ctx.db
+        .select({
+          reserva: reservas,
+          clienteNome: clientes.nome,
+          clienteTelefone: clientes.telefone,
+        })
+        .from(reservas)
+        .leftJoin(clientes, eq(reservas.clienteId, clientes.id))
+        .where(eq(reservas.id, input.id))
+        .limit(1);
+      if (!linha) throw new TRPCError({ code: "NOT_FOUND" });
+      const estudioIds = (
+        await ctx.db
+          .select({ estudioId: reservaEstudios.estudioId })
+          .from(reservaEstudios)
+          .where(eq(reservaEstudios.reservaId, input.id))
+      ).map((j) => j.estudioId);
+      return {
+        ...linha.reserva,
+        clienteNome: linha.clienteNome,
+        clienteTelefone: linha.clienteTelefone,
+        estudioIds,
+        valorTotalCents: totalCents(
+          linha.reserva.valorDiariaCents,
+          linha.reserva.descontoCents,
+          diasDaReserva(linha.reserva.dataInicio, linha.reserva.dataFim)
+        ),
+      };
+    }),
+
+  /*
+   * O envio acontece no WhatsApp do sócio (wa.me) — aqui só se registra
+   * QUANDO foi enviado, para o estado aparecer na lista em vez de sumir.
+   */
+  marcarWhatsappEnviado: socioProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const [reserva] = await ctx.db
+        .update(reservas)
+        .set({ whatsappEnviadoEm: new Date() })
+        .where(eq(reservas.id, input.id))
+        .returning();
+      if (!reserva) throw new TRPCError({ code: "NOT_FOUND" });
+      return reserva;
+    }),
+
   atualizarValores: socioProcedure
     .input(
       z.object({

@@ -184,6 +184,38 @@ describe("valores da reserva", () => {
   });
 });
 
+describe("detalhe e envio", () => {
+  it("obter traz tokens dos portais e telefone do cliente", async () => {
+    const s = socio();
+    const cliente = await s.clientes.criar({
+      nome: "EGREY",
+      telefone: "11 99999-0000",
+    });
+    const r = await s.reservas.criar(
+      diaria([ids.A], { clienteId: cliente.id })
+    );
+    const detalhe = await s.reservas.obter({ id: r.id });
+    expect(detalhe.tokenPortalReserva).toMatch(/^[0-9a-f]{64}$/);
+    expect(detalhe.clienteTelefone).toBe("11 99999-0000");
+    expect(detalhe.whatsappEnviadoEm).toBeNull();
+  });
+
+  it("marcarWhatsappEnviado registra o quando, visível na lista", async () => {
+    const s = socio();
+    const r = await s.reservas.criar(diaria([ids.A]));
+    await s.reservas.marcarWhatsappEnviado({ id: r.id });
+    const lista = await s.reservas.listar();
+    expect(lista[0].whatsappEnviadoEm).toBeInstanceOf(Date);
+  });
+
+  it("funcionário não acessa o detalhe (tokens são de sócio)", async () => {
+    const r = await socio().reservas.criar(diaria([ids.A]));
+    await expect(
+      criarCaller(db, sessaoFake("funcionario")).reservas.obter({ id: r.id })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
 describe("reservas.disponibilidade", () => {
   it("é a mesma regra da criação: aponta o conflito com código", async () => {
     await socio().reservas.criar(diaria([ids.A]));
