@@ -53,14 +53,14 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
           />
         )}
         <p className="text-sm tracking-widest text-muted-foreground uppercase">
-          Estúdio de foto e vídeo · São Paulo
+          Estúdio de foto e vídeo · Vila Romana · São Paulo
         </p>
         <h1 className="max-w-2xl text-4xl leading-tight font-semibold tracking-tight sm:text-6xl">
           {campanha?.heroTitulo ?? "Quatro estúdios que se combinam."}
         </h1>
         <p className="max-w-xl text-lg text-muted-foreground">
           {campanha?.heroSubtitulo ??
-            "Mais de 500m² de ciclorama, luz e cozinha profissional — montados do tamanho da sua produção."}
+            "Mais de 500m² e duas entradas independentes: ciclorama de 54m², pé-direito de 10m — montados do tamanho da sua produção."}
         </p>
       </header>
 
@@ -140,8 +140,28 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
         </section>
       )}
 
-      <footer className="border-t pt-8 text-sm text-muted-foreground">
-        Tino Estúdio · São Paulo
+      {/* Quem somos — o texto do estúdio, não o meu */}
+      <section className="flex max-w-2xl flex-col gap-4">
+        <h2 className="text-sm tracking-widest text-muted-foreground uppercase">
+          Quem somos
+        </h2>
+        <p className="text-muted-foreground">
+          O Tino Estúdio nasceu da necessidade de ter um espaço que entendesse
+          de verdade o que uma produção audiovisual precisa. Criado por dois
+          sócios com anos de experiência no mercado criativo, com a convicção
+          de que infraestrutura de qualidade não deveria ser privilégio de
+          grandes produções.
+        </p>
+        <p className="text-muted-foreground">
+          O A e o E possuem entradas separadas e funcionam de forma totalmente
+          autônoma — ideal para produções simultâneas. B e C são complementares,
+          pensados para ampliar as possibilidades de cada projeto.
+        </p>
+      </section>
+
+      <footer className="flex flex-col gap-1 border-t pt-8 text-sm text-muted-foreground">
+        <span>Tino Estúdio · Vila Romana, São Paulo</span>
+        <span>Rua Camilo, 789 · Rua Marco Aurélio, 268</span>
       </footer>
     </div>
   );
