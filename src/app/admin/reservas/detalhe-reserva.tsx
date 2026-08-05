@@ -20,6 +20,14 @@ import { Separator } from "@/components/ui/separator";
  */
 
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
+const horaCurtaBr = (d: Date) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
 const horaCurta = (h: string) => h.slice(0, 5);
 const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -159,6 +167,22 @@ export function DetalheReserva({
               <dd className="font-mono">
                 {r.estudioIds.map(codigoEstudio).join("+")}
               </dd>
+              {(r.checkInEm || r.checkOutEm) && (
+                <>
+                  <dt className="text-muted-foreground">No estúdio</dt>
+                  <dd className="tabular-nums">
+                    {r.checkInEm ? horaCurtaBr(r.checkInEm) : "—"}
+                    {" → "}
+                    {r.checkOutEm ? horaCurtaBr(r.checkOutEm) : "em andamento"}
+                    {r.comanda.horasExtras > 0 && (
+                      <span className="text-[--attention]">
+                        {" "}
+                        · {r.comanda.horasExtras}h extra
+                      </span>
+                    )}
+                  </dd>
+                </>
+              )}
               <dt className="text-muted-foreground">Total</dt>
               <dd className="tabular-nums">
                 {r.valorTotalCents !== null ? (

@@ -29,7 +29,7 @@ export const usuarios = pgTable("usuarios", {
   /* liga o login ao cadastro de pessoas (fornecedor vê só o que é dele) */
   pessoaId: integer("pessoa_id").references(() => pessoas.id),
   ativo: boolean("ativo").notNull().default(true),
-  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const sessoes = pgTable("sessoes", {
@@ -38,6 +38,6 @@ export const sessoes = pgTable("sessoes", {
   usuarioId: integer("usuario_id")
     .notNull()
     .references(() => usuarios.id),
-  expiraEm: timestamp("expira_em").notNull(),
-  criadaEm: timestamp("criada_em").notNull().defaultNow(),
+  expiraEm: timestamp("expira_em", { withTimezone: true }).notNull(),
+  criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
 });

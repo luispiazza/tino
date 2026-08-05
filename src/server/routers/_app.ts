@@ -4,6 +4,7 @@ import { authRouter } from "./auth";
 import { clientesRouter } from "./clientes";
 import { estudiosRouter } from "./estudios";
 import { pessoasRouter } from "./pessoas";
+import { portaisRouter } from "./portais";
 import { reservasRouter } from "./reservas";
 import { escalaRouter } from "./escala";
 import { rentalRouter } from "./rental";
@@ -16,6 +17,7 @@ export const appRouter = router({
   clientes: clientesRouter,
   estudios: estudiosRouter,
   pessoas: pessoasRouter,
+  portais: portaisRouter,
   reservas: reservasRouter,
   escala: escalaRouter,
   rental: rentalRouter,

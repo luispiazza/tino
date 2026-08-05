@@ -46,7 +46,7 @@ export const cobrancas = pgTable("cobrancas", {
   dataPagamento: date("data_pagamento"),
   nfNumero: varchar("nf_numero", { length: 50 }),
   nfUrl: varchar("nf_url", { length: 300 }),
-  criadaEm: timestamp("criada_em").notNull().defaultNow(),
+  criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /* ---------- Categorias — dois eixos ---------- */
@@ -139,7 +139,7 @@ export const extratos = pgTable("extratos", {
   id: serial("id").primaryKey(),
   banco: varchar("banco", { length: 50 }).notNull(),
   arquivo: varchar("arquivo", { length: 200 }).notNull(),
-  importadoEm: timestamp("importado_em").notNull().defaultNow(),
+  importadoEm: timestamp("importado_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const linhaEstado = pgEnum("linha_estado", [

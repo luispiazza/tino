@@ -13,6 +13,7 @@ import {
   LinkInvalido,
   StatusReserva,
 } from "../../ficha";
+import { ComandaClient } from "./comanda-client";
 
 export const dynamic = "force-dynamic";
 
@@ -45,9 +46,24 @@ export default async function PortalProdutor({
           <FichaReserva reserva={reserva} />
         </CardContent>
       </Card>
+      <ComandaClient
+        token={token}
+        checkInEm={reserva.checkInEm}
+        checkOutEm={reserva.checkOutEm}
+      />
+
+      {reserva.comanda.horasExtras > 0 && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-[--attention]">
+          {reserva.comanda.horasExtras}h de hora extra além das{" "}
+          {reserva.horaFim.slice(0, 5)}
+          {reserva.comanda.horaExtraCents !== null &&
+            ` · ${brl(reserva.comanda.horaExtraCents)}`}
+          {reserva.comanda.horaExtraSemPreco && " · valor a combinar"}
+        </p>
+      )}
+
       <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-        Check-in, extras e fechamento de comanda vão aparecer aqui no dia do
-        shooting.
+        Extras e fechamento de comanda entram aqui nas próximas semanas.
       </p>
 
       {reserva.valorTotalCents !== null && (
@@ -55,8 +71,10 @@ export default async function PortalProdutor({
           <div className="mx-auto flex max-w-md items-baseline justify-between px-6 py-3 text-sm">
             <span className="text-muted-foreground">
               {reserva.dias} {reserva.dias === 1 ? "diária" : "diárias"}
+              {reserva.comanda.horasExtras > 0 &&
+                ` + ${reserva.comanda.horasExtras}h extra`}
               {reserva.descontoCents > 0 &&
-                ` − ${brl(reserva.descontoCents)} de desconto`}
+                ` − ${brl(reserva.descontoCents)}`}
             </span>
             <span className="font-medium tabular-nums">
               {brl(reserva.valorTotalCents)}

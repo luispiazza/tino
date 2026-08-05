@@ -13,11 +13,8 @@ import {
   complementaresSemBase,
 } from "../reservas/disponibilidade";
 import { gerarTokenPortal, proximoCodigo } from "../reservas/codigo";
-import {
-  diasDaReserva,
-  totalCents,
-  validarValores,
-} from "../reservas/valores";
+import { diasDaReserva, validarValores } from "../reservas/valores";
+import { montarComanda } from "../reservas/comanda";
 import { auditar } from "../auditoria";
 
 const dataISO = z.string().date();
@@ -63,6 +60,7 @@ export const reservasRouter = router({
           estudioIds: z.array(z.number().int()).min(1),
           clienteId: z.number().int().nullish(),
           valorDiariaCents: z.number().int().nonnegative().nullish(),
+          valorHoraExtraCents: z.number().int().nonnegative().nullish(),
           descontoCents: z.number().int().nonnegative().default(0),
         })
         .refine((p) => p.dataFim >= p.dataInicio, {
@@ -107,6 +105,7 @@ export const reservasRouter = router({
             horaInicio: input.horaInicio,
             horaFim: input.horaFim,
             valorDiariaCents: input.valorDiariaCents ?? null,
+            valorHoraExtraCents: input.valorHoraExtraCents ?? null,
             descontoCents: input.descontoCents,
             tokenPortalReserva: gerarTokenPortal(),
             tokenPortalProdutor: gerarTokenPortal(),
@@ -158,11 +157,8 @@ export const reservasRouter = router({
       estudioIds: juncao
         .filter((j) => j.reservaId === r.id)
         .map((j) => j.estudioId),
-      valorTotalCents: totalCents(
-        r.valorDiariaCents,
-        r.descontoCents,
-        diasDaReserva(r.dataInicio, r.dataFim)
-      ),
+      comanda: montarComanda(r),
+      valorTotalCents: montarComanda(r).totalCents,
     }));
   }),
 
@@ -258,11 +254,8 @@ export const reservasRouter = router({
         clienteTelefone: linha.clienteTelefone,
         estudioIds,
         cobrancas: cobrancasDaReserva,
-        valorTotalCents: totalCents(
-          linha.reserva.valorDiariaCents,
-          linha.reserva.descontoCents,
-          diasDaReserva(linha.reserva.dataInicio, linha.reserva.dataFim)
-        ),
+        comanda: montarComanda(linha.reserva),
+        valorTotalCents: montarComanda(linha.reserva).totalCents,
       };
     }),
 
@@ -295,6 +288,7 @@ export const reservasRouter = router({
       z.object({
         id: z.number().int(),
         valorDiariaCents: z.number().int().nonnegative().nullable(),
+        valorHoraExtraCents: z.number().int().nonnegative().nullish(),
         descontoCents: z.number().int().nonnegative(),
       })
     )
@@ -314,6 +308,9 @@ export const reservasRouter = router({
         .set({
           valorDiariaCents: input.valorDiariaCents,
           descontoCents: input.descontoCents,
+          ...(input.valorHoraExtraCents !== undefined
+            ? { valorHoraExtraCents: input.valorHoraExtraCents }
+            : {}),
         })
         .where(eq(reservas.id, input.id))
         .returning();

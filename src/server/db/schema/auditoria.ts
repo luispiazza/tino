@@ -21,5 +21,5 @@ export const auditoria = pgTable("auditoria", {
   entidade: varchar("entidade", { length: 30 }).notNull(),
   entidadeId: integer("entidade_id"),
   detalhe: jsonb("detalhe"),
-  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
 });

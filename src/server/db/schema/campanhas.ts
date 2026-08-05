@@ -29,7 +29,7 @@ export const campanhas = pgTable("campanhas", {
   ogDescricao: varchar("og_descricao", { length: 200 }),
   ogImageUrl: varchar("og_image_url", { length: 300 }),
   ativa: boolean("ativa").notNull().default(true),
-  criadaEm: timestamp("criada_em").notNull().defaultNow(),
+  criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /*
@@ -48,5 +48,5 @@ export const montagens = pgTable("montagens", {
   /* funil: iniciada → concluída → clique_whatsapp → reserva */
   etapa: varchar("etapa", { length: 20 }).notNull().default("iniciada"),
   reservaId: integer("reserva_id"),
-  criadaEm: timestamp("criada_em").notNull().defaultNow(),
+  criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
 });

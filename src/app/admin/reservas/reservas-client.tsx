@@ -52,6 +52,7 @@ const formVazio = {
   novoClienteNome: "",
   novoClienteTelefone: "",
   valorDiaria: "",
+  valorHoraExtra: "",
   desconto: "",
 };
 
@@ -119,6 +120,7 @@ export function ReservasClient() {
       ...consulta,
       clienteId,
       valorDiariaCents: paraCents(form.valorDiaria),
+      valorHoraExtraCents: paraCents(form.valorHoraExtra),
       descontoCents: paraCents(form.desconto) ?? 0,
     });
   }
@@ -293,7 +295,7 @@ export function ReservasClient() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="valorDiaria">Diária (R$)</Label>
                   <Input
@@ -305,6 +307,19 @@ export function ReservasClient() {
                     value={form.valorDiaria}
                     onChange={(e) =>
                       setForm({ ...form, valorDiaria: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="valorHoraExtra">Hora extra (R$)</Label>
+                  <Input
+                    id="valorHoraExtra"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.valorHoraExtra}
+                    onChange={(e) =>
+                      setForm({ ...form, valorHoraExtra: e.target.value })
                     }
                   />
                 </div>

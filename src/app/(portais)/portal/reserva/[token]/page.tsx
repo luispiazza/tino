@@ -51,8 +51,20 @@ export default async function PortalReserva({
                   {reserva.dias} {reserva.dias === 1 ? "diária" : "diárias"}
                 </dt>
                 <dd className="text-right">
-                  {brl((reserva.valorDiariaCents ?? 0) * reserva.dias)}
+                  {brl(reserva.comanda.diariasCents ?? 0)}
                 </dd>
+                {reserva.comanda.horasExtras > 0 && (
+                  <>
+                    <dt className="text-muted-foreground">
+                      {reserva.comanda.horasExtras}h extra
+                    </dt>
+                    <dd className="text-right">
+                      {reserva.comanda.horaExtraCents !== null
+                        ? brl(reserva.comanda.horaExtraCents)
+                        : "a combinar"}
+                    </dd>
+                  </>
+                )}
                 {reserva.descontoCents > 0 && (
                   <>
                     <dt className="text-muted-foreground">Desconto</dt>

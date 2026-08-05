@@ -67,7 +67,7 @@ export const tarefas = pgTable("tarefas", {
   ehArrasto: boolean("eh_arrasto").notNull().default(false),
   dataOriginal: date("data_original"),
   feitaPorId: integer("feita_por_id").references(() => pessoas.id),
-  concluidaEm: timestamp("concluida_em"),
+  concluidaEm: timestamp("concluida_em", { withTimezone: true }),
 });
 
 export const diaTipo = pgEnum("dia_tipo", ["shooting", "livre"]);
@@ -82,7 +82,7 @@ export const ajustes = pgTable("ajustes_do_dia", {
   data: date("data").notNull(),
   diaTipo: diaTipo("dia_tipo").notNull(),
   descricao: varchar("descricao", { length: 300 }).notNull(),
-  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /* Jornada esperada vem do turno; hora extra sai por diferença

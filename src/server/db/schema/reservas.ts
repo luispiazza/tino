@@ -26,7 +26,7 @@ export const clientes = pgTable("clientes", {
   empresa: varchar("empresa", { length: 120 }),
   telefone: varchar("telefone", { length: 20 }),
   email: varchar("email", { length: 120 }),
-  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const reservas = pgTable("reservas", {
@@ -42,18 +42,26 @@ export const reservas = pgTable("reservas", {
   /* nulo = valor ainda não negociado — nunca um número inventado */
   valorDiariaCents: integer("valor_diaria_cents"),
   descontoCents: integer("desconto_cents").notNull().default(0),
+  /* nulo = hora extra é registrada e contada, mas não precificada */
+  valorHoraExtraCents: integer("valor_hora_extra_cents"),
+  /*
+   * A comanda: o produtor registra a chegada e a saída no portal.
+   * Instante real (não hora solta): a saída pode virar o dia.
+   */
+  checkInEm: timestamp("check_in_em", { withTimezone: true }),
+  checkOutEm: timestamp("check_out_em", { withTimezone: true }),
   /*
    * Estado de envio visível (lição da v1: existia no banco e só aparecia
    * no hover). Nulo = nunca enviada ao cliente.
    */
-  whatsappEnviadoEm: timestamp("whatsapp_enviado_em"),
+  whatsappEnviadoEm: timestamp("whatsapp_enviado_em", { withTimezone: true }),
   /*
    * Tokens opacos, um por portal — a credencial, separada do código.
    * Revogáveis, expiram após o fechamento da comanda.
    */
   tokenPortalReserva: varchar("token_portal_reserva", { length: 64 }),
   tokenPortalProdutor: varchar("token_portal_produtor", { length: 64 }),
-  criadaEm: timestamp("criada_em").notNull().defaultNow(),
+  criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /*

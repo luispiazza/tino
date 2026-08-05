@@ -36,6 +36,20 @@
       "when": 1785930860569,
       "tag": "0004_auditoria_cobrancas",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785950989146,
+      "tag": "0005_comanda",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785952219689,
+      "tag": "0006_timestamptz",
+      "breakpoints": true
     }
   ]
 }
