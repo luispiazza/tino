@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import Image from "next/image";
 import { db } from "@/server/db";
 import { estudios } from "@/server/db/schema";
@@ -13,6 +15,18 @@ import { MonteSeuTino } from "./monte-seu-tino";
  * Fotos e vídeo entram nos espaços já reservados quando o material
  * chegar; até lá o hero é tipográfico.
  */
+
+const INSTAGRAM = "https://www.instagram.com/tino.estudios";
+
+/*
+ * O vídeo do hero é opcional e entra sem código novo: basta colocar o
+ * arquivo em public/video/hero.mp4. Sem ele, a foto segura o hero (e
+ * serve de poster enquanto o vídeo carrega).
+ */
+function videoDoHero(): string | null {
+  const arquivo = path.join(process.cwd(), "public", "video", "hero.mp4");
+  return existsSync(arquivo) ? "/video/hero.mp4" : null;
+}
 
 /* Fotos do acervo do estúdio (repo tino-estudio). Estúdio sem foto
  * aparece sem imagem, nunca com placeholder genérico. */
@@ -48,18 +62,26 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
   const principais = lista.filter((e) => !e.ehComplementar);
   const complementares = lista.filter((e) => e.ehComplementar);
 
+  const video = campanha?.heroVideoUrl ?? videoDoHero();
+
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-20 px-6 py-16 sm:py-24">
-      {/* Hero — campanha troca vídeo e textos; sem campanha, o padrão */}
-      <header className="relative flex min-h-[60svh] flex-col justify-end gap-5 overflow-hidden rounded-2xl p-6 sm:min-h-[70svh] sm:p-10">
-        {campanha?.heroVideoUrl ? (
+    <>
+      {/*
+       * Hero em tela cheia, fora da caixa de conteúdo: vídeo de fundo
+       * (campanha troca o arquivo), logo, e a única ação creme da página.
+       */}
+      {/* isolate + camadas positivas: z negativo escaparia para trás do
+          fundo da página e o hero apareceria preto */}
+      <header className="relative isolate flex min-h-svh flex-col items-center justify-center gap-6 px-6 text-center">
+        {video ? (
           <video
-            src={campanha.heroVideoUrl}
+            src={video}
+            poster="/fotos/hero.jpg"
             autoPlay
             muted
             loop
             playsInline
-            className="absolute inset-0 -z-20 h-full w-full object-cover"
+            className="absolute inset-0 z-0 h-full w-full object-cover"
           />
         ) : (
           <Image
@@ -68,23 +90,68 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
             fill
             priority
             sizes="100vw"
-            className="-z-20 object-cover"
+            className="z-0 object-cover"
           />
         )}
-        {/* o texto precisa ganhar da foto, sempre */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/80 to-background/30" />
-        <p className="text-sm tracking-widest text-muted-foreground uppercase">
-          Estúdio de foto e vídeo · Vila Romana · São Paulo
+        {/* o texto precisa ganhar do vídeo, sempre */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-background/70 via-background/40 to-background" />
+
+        <div className="relative z-20 flex flex-col items-center gap-6">
+        {/* logo entre dois fios, como a marca se apresenta */}
+        <div className="flex items-center gap-5">
+          <span className="h-px w-10 bg-foreground/30 sm:w-16" />
+          <Image
+            src="/logo.png"
+            alt="Tino Estúdio"
+            width={944}
+            height={411}
+            priority
+            className="h-9 w-auto sm:h-11"
+          />
+          <span className="h-px w-10 bg-foreground/30 sm:w-16" />
+        </div>
+
+        <p className="text-xs tracking-[0.25em] text-foreground/70 uppercase">
+          Vila Romana · São Paulo
         </p>
-        <h1 className="max-w-2xl text-4xl leading-tight font-semibold tracking-tight sm:text-6xl">
-          {campanha?.heroTitulo ?? "Quatro estúdios que se combinam."}
+
+        <h1 className="max-w-3xl text-5xl leading-[0.95] font-semibold tracking-tight uppercase sm:text-7xl">
+          {campanha?.heroTitulo ?? "Monte seu Tino"}
         </h1>
-        <p className="max-w-xl text-lg text-muted-foreground">
+
+        <p className="max-w-xl text-base text-foreground/80 sm:text-lg">
           {campanha?.heroSubtitulo ??
             "Mais de 500m² e duas entradas independentes: ciclorama de 54m², pé-direito de 10m — montados do tamanho da sua produção."}
         </p>
+
+        <div className="mt-2 flex flex-col items-center gap-4">
+          <a
+            href="#monte"
+            className="rounded-full bg-primary px-8 py-3 text-sm font-semibold tracking-wide text-primary-foreground uppercase transition-opacity hover:opacity-90"
+          >
+            Comece já
+          </a>
+          <a
+            href={INSTAGRAM}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs tracking-[0.2em] text-foreground/60 uppercase transition-colors hover:text-foreground"
+          >
+            Instagram
+          </a>
+        </div>
+        </div>
+
+        <a
+          href="#monte"
+          aria-label="Ver os espaços"
+          className="absolute bottom-8 z-20 text-foreground/50 transition-colors hover:text-foreground"
+        >
+          ↓
+        </a>
       </header>
 
+      <div className="mx-auto flex max-w-4xl flex-col gap-20 px-6 py-16 sm:py-24">
       {/* Combinações — a prateleira. Complementar não aparece sozinho. */}
       <section className="flex flex-col gap-6">
         <h2 className="text-sm tracking-widest text-muted-foreground uppercase">
@@ -195,7 +262,16 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
       <footer className="flex flex-col gap-1 border-t pt-8 text-sm text-muted-foreground">
         <span>Tino Estúdio · Vila Romana, São Paulo</span>
         <span>Rua Camilo, 789 · Rua Marco Aurélio, 268</span>
+        <a
+          href={INSTAGRAM}
+          target="_blank"
+          rel="noreferrer"
+          className="w-fit hover:text-foreground"
+        >
+          @tino.estudios
+        </a>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }
