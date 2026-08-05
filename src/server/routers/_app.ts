@@ -3,6 +3,7 @@ import { auditoriaRouter } from "./auditoria";
 import { authRouter } from "./auth";
 import { clientesRouter } from "./clientes";
 import { estudiosRouter } from "./estudios";
+import { pessoasRouter } from "./pessoas";
 import { reservasRouter } from "./reservas";
 import { escalaRouter } from "./escala";
 import { rentalRouter } from "./rental";
@@ -14,6 +15,7 @@ export const appRouter = router({
   auth: authRouter,
   clientes: clientesRouter,
   estudios: estudiosRouter,
+  pessoas: pessoasRouter,
   reservas: reservasRouter,
   escala: escalaRouter,
   rental: rentalRouter,
