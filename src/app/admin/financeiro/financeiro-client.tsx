@@ -24,6 +24,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { CaixaClient } from "./caixa-client";
 import { DespesasClient } from "./despesas-client";
 import { ObrigacoesClient } from "./obrigacoes-client";
 
@@ -74,11 +75,15 @@ export function FinanceiroClient() {
       <Tabs defaultValue="obrigacoes">
         <TabsList>
           <TabsTrigger value="obrigacoes">Obrigações</TabsTrigger>
+          <TabsTrigger value="caixa">Caixa</TabsTrigger>
           <TabsTrigger value="cobrancas">Cobranças</TabsTrigger>
           <TabsTrigger value="despesas">Despesas</TabsTrigger>
         </TabsList>
         <TabsContent value="obrigacoes" className="mt-3">
           <ObrigacoesClient />
+        </TabsContent>
+        <TabsContent value="caixa" className="mt-3">
+          <CaixaClient />
         </TabsContent>
         <TabsContent value="cobrancas" className="mt-3">
           <CobrancasClient />

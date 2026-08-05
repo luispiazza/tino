@@ -7,6 +7,7 @@ import {
   clientes,
   cobrancas,
   contasRecorrentes,
+  financeiroConfig,
   lancamentos,
   naturezaObrigacao,
   reservas,
@@ -18,6 +19,20 @@ import {
   type EstadoCobranca,
 } from "../financeiro/esteira";
 import { auditar } from "../auditoria";
+
+const hojeSP = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
+    new Date()
+  );
+
+const mesDe = (iso: string) => iso.slice(0, 7);
+const proximosMeses = (base: string, quantos: number) => {
+  const [ano, mes] = base.split("-").map(Number);
+  return Array.from({ length: quantos }, (_, i) => {
+    const d = new Date(Date.UTC(ano, mes - 1 + i, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+};
 
 /*
  * Domínio 7 — inteiro atrás de socioProcedure.
@@ -224,6 +239,120 @@ export const financeiroRouter = router({
 
     return { hoje, itens };
   }),
+
+  /* ---------- Caixa ---------- */
+
+  /*
+   * O saldo em conta na data da virada. Sem ele o fluxo parte do zero e
+   * exibe um saldo que não existe — é o único número que o sistema não
+   * consegue deduzir, e por isso ele é pedido na tela, não chutado.
+   */
+  obterConfig: socioProcedure.query(async ({ ctx }) => {
+    const [config] = await ctx.db.select().from(financeiroConfig).limit(1);
+    return config ?? null;
+  }),
+
+  definirSaldoInicial: socioProcedure
+    .input(
+      z.object({
+        dataVirada: z.string().date(),
+        saldoInicialCents: z.number().int(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [existente] = await ctx.db.select().from(financeiroConfig).limit(1);
+      const [config] = existente
+        ? await ctx.db
+            .update(financeiroConfig)
+            .set(input)
+            .where(eq(financeiroConfig.id, existente.id))
+            .returning()
+        : await ctx.db.insert(financeiroConfig).values(input).returning();
+      await auditar(
+        ctx.db,
+        ctx.session,
+        existente ? "atualizar" : "criar",
+        "financeiro_config",
+        config.id,
+        input
+      );
+      return config;
+    }),
+
+  /*
+   * Fluxo de caixa é consulta derivada, nunca tabela (princípio 3).
+   * Realizado: o que passou pela conta desde a virada — cobrança com
+   * dataPagamento, lançamento pago. Projetado: o que tem data e ainda
+   * não aconteceu. Lançamento sem valor entra como zero e é contado
+   * à parte: o mês é otimista enquanto a conta não chega, e a tela diz.
+   */
+  fluxoDeCaixa: socioProcedure
+    .input(z.object({ meses: z.number().int().min(1).max(12).default(3) }))
+    .query(async ({ ctx, input }) => {
+      const hoje = hojeSP();
+      const [config] = await ctx.db.select().from(financeiroConfig).limit(1);
+
+      const todasCobrancas = await ctx.db.select().from(cobrancas);
+      const todosLancamentos = await ctx.db.select().from(lancamentos);
+
+      const desdeVirada = (data: string | null) =>
+        data !== null && (!config || data >= config.dataVirada);
+
+      const recebido = todasCobrancas
+        .filter((c) => desdeVirada(c.dataPagamento) && c.dataPagamento! <= hoje)
+        .reduce((s, c) => s + c.valorCents, 0);
+      const pago = todosLancamentos
+        .filter(
+          (l) =>
+            l.estado === "pago" &&
+            desdeVirada(l.dataPagamento) &&
+            l.dataPagamento! <= hoje
+        )
+        .reduce((s, l) => s + (l.valorCents ?? 0), 0);
+
+      const saldoInicial = config?.saldoInicialCents ?? 0;
+      const saldoHoje = saldoInicial + recebido - pago;
+
+      /* projeção: parte do saldo de hoje e empilha mês a mês */
+      const meses = proximosMeses(mesDe(hoje), input.meses);
+      let acumulado = saldoHoje;
+      const projecao = meses.map((mes) => {
+        const entradas = todasCobrancas
+          .filter(
+            (c) =>
+              c.estado !== "cancelada" &&
+              c.dataPagamento === null &&
+              c.previsaoRecebimento !== null &&
+              mesDe(c.previsaoRecebimento) === mes &&
+              c.previsaoRecebimento > hoje
+          )
+          .reduce((s, c) => s + c.valorCents, 0);
+
+        const aPagarNoMes = todosLancamentos.filter(
+          (l) =>
+            l.estado !== "pago" &&
+            l.dataVencimento !== null &&
+            mesDe(l.dataVencimento) === mes &&
+            l.dataVencimento > hoje
+        );
+        const saidas = aPagarNoMes.reduce((s, l) => s + (l.valorCents ?? 0), 0);
+        const semValor = aPagarNoMes.filter((l) => l.valorCents === null).length;
+
+        acumulado += entradas - saidas;
+        return { mes, entradas, saidas, semValor, saldoFinal: acumulado };
+      });
+
+      return {
+        hoje,
+        configurado: config !== undefined,
+        dataVirada: config?.dataVirada ?? null,
+        saldoInicial,
+        recebido,
+        pago,
+        saldoHoje,
+        projecao,
+      };
+    }),
 
   /* ---------- Despesas: recorrentes e lançamentos ---------- */
 
