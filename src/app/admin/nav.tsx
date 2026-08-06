@@ -16,6 +16,7 @@ const areas: { href: string; rotulo: string; papeis: Papel[] }[] = [
   { href: "/admin/financeiro", rotulo: "Financeiro", papeis: ["socio"] },
   { href: "/admin/rotina", rotulo: "Rotina", papeis: ["socio"] },
   { href: "/admin/rental", rotulo: "Rental", papeis: ["socio", "funcionario"] },
+  { href: "/admin/relatorios", rotulo: "Ocupação", papeis: ["socio"] },
   { href: "/admin/estudios", rotulo: "Estúdios", papeis: ["socio"] },
   { href: "/admin/pessoas", rotulo: "Pessoas", papeis: ["socio"] },
   { href: "/admin/campanhas", rotulo: "Campanhas", papeis: ["socio"] },

@@ -4,6 +4,7 @@ import {
   varchar,
   integer,
   boolean,
+  date,
   timestamp,
   pgEnum,
 } from "drizzle-orm/pg-core";
@@ -31,6 +32,38 @@ export const itens = pgTable("itens", {
   /* padrão do item, copiado como snapshot no pedido */
   multaPorUnidadeCents: integer("multa_por_unidade_cents"),
   ativo: boolean("ativo").notNull().default(true),
+});
+
+/*
+ * Inventário periódico — o outro regime de controle (Domínio 3):
+ * contagem semanal SEM multa, para o que some sem culpado (prato,
+ * talher, copo, cabide). Só entra item com qtdEsperada definida;
+ * consumível fica de fora porque contar café não responde nada.
+ *
+ * O esperado é copiado como snapshot: mudar o cadastro amanhã não
+ * reescreve a contagem de hoje.
+ */
+export const inventarios = pgTable("inventarios", {
+  id: serial("id").primaryKey(),
+  data: date("data").notNull(),
+  fechadoEm: timestamp("fechado_em", { withTimezone: true }),
+  criadoEm: timestamp("criado_em", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const inventarioItens = pgTable("inventario_itens", {
+  id: serial("id").primaryKey(),
+  inventarioId: integer("inventario_id")
+    .notNull()
+    .references(() => inventarios.id),
+  itemId: integer("item_id")
+    .notNull()
+    .references(() => itens.id),
+  nomeItem: varchar("nome_item", { length: 100 }).notNull(),
+  qtdEsperada: integer("qtd_esperada").notNull(),
+  /* nulo = ainda não contado */
+  qtdContada: integer("qtd_contada"),
 });
 
 export const pedidoStatus = pgEnum("pedido_status", [

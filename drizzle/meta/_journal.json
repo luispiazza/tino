@@ -57,6 +57,13 @@
       "when": 1785953288344,
       "tag": "0007_rental",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786022947104,
+      "tag": "0008_inventario",
+      "breakpoints": true
     }
   ]
 }

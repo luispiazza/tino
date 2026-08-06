@@ -22,6 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { InventarioClient } from "./inventario-client";
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -35,9 +42,30 @@ const formVazio = {
   custoFornecedor: "",
   qtdTotal: "",
   multa: "",
+  qtdEsperada: "",
 };
 
 export function RentalClient() {
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-semibold tracking-tight">Rental</h1>
+      <Tabs defaultValue="catalogo">
+        <TabsList>
+          <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
+          <TabsTrigger value="inventario">Contagem</TabsTrigger>
+        </TabsList>
+        <TabsContent value="catalogo" className="mt-3">
+          <CatalogoClient />
+        </TabsContent>
+        <TabsContent value="inventario" className="mt-3">
+          <InventarioClient />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function CatalogoClient() {
   const utils = trpc.useUtils();
   const catalogo = trpc.rental.catalogo.useQuery();
   const [aberto, setAberto] = useState(false);
@@ -63,6 +91,7 @@ export function RentalClient() {
       custoFornecedorCentsDia: paraCents(form.custoFornecedor),
       qtdTotal: form.qtdTotal === "" ? null : Number(form.qtdTotal),
       multaPorUnidadeCents: paraCents(form.multa),
+      qtdEsperada: form.qtdEsperada === "" ? null : Number(form.qtdEsperada),
     };
     if (editandoId) atualizar.mutate({ id: editandoId, ...dados });
     else criar.mutate(dados);
@@ -70,8 +99,7 @@ export function RentalClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Rental</h1>
+      <div className="flex items-center justify-end">
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger
             render={
@@ -163,10 +191,24 @@ export function RentalClient() {
                     onChange={(e) => setForm({ ...form, multa: e.target.value })}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="iesperada">Esperado na contagem</Label>
+                  <Input
+                    id="iesperada"
+                    type="number"
+                    min={0}
+                    placeholder="vazio = fora da contagem"
+                    value={form.qtdEsperada}
+                    onChange={(e) =>
+                      setForm({ ...form, qtdEsperada: e.target.value })
+                    }
+                  />
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 Quantidade vazia marca consumível (café, detergente): não trava
-                pedido nem entra no inventário.
+                pedido. &quot;Esperado na contagem&quot; coloca o item no
+                inventário semanal — é onde entram prato, talher e cabide.
               </p>
               <Button
                 onClick={salvar}
@@ -242,6 +284,8 @@ export function RentalClient() {
                           multa: i.multaPorUnidadeCents
                             ? String(i.multaPorUnidadeCents / 100)
                             : "",
+                          qtdEsperada:
+                            i.qtdEsperada === null ? "" : String(i.qtdEsperada),
                         });
                         setAberto(true);
                       }}

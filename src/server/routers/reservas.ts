@@ -16,6 +16,7 @@ import { gerarTokenPortal, proximoCodigo } from "../reservas/codigo";
 import { diasDaReserva, validarValores } from "../reservas/valores";
 import { montarComanda } from "../reservas/comanda";
 import { itensDaReserva, totalExtrasCents } from "../rental/disponibilidade";
+import { ocupacaoPorEstudio } from "../relatorios/ocupacao";
 import { auditar } from "../auditoria";
 
 const dataISO = z.string().date();
@@ -363,6 +364,11 @@ export const reservasRouter = router({
       });
       return reserva;
     }),
+
+  /* Domínio 8 — ocupação por estúdio, o relatório que não existia */
+  ocupacao: socioProcedure
+    .input(z.object({ inicio: z.string().date(), fim: z.string().date() }))
+    .query(({ ctx, input }) => ocupacaoPorEstudio(ctx.db, input)),
 
   cancelar: socioProcedure
     .input(z.object({ id: z.number().int() }))
