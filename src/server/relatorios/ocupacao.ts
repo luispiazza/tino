@@ -76,6 +76,15 @@ export async function ocupacaoPorEstudio(
   return {
     totalDias,
     diasComShooting: diasDoPeriodo.size,
+    /* a tira do mês: um quadro por dia, com quantos estúdios rodaram */
+    dias: Array.from({ length: totalDias }, (_, i) => {
+      const d = new Date(periodo.inicio + "T12:00Z");
+      d.setUTCDate(d.getUTCDate() + i);
+      const data = d.toISOString().slice(0, 10);
+      let ocupados = 0;
+      for (const [, dias] of diasPorEstudio) if (dias.has(data)) ocupados++;
+      return { data, estudios: ocupados };
+    }),
     estudios: lista.map((e) => {
       const dias = diasPorEstudio.get(e.id)?.size ?? 0;
       return {

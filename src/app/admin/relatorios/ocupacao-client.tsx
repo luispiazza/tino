@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
+import { BarrasHorizontais } from "@/components/viz/barras";
+import { TiraDoMes } from "@/components/viz/tira-do-mes";
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", {
@@ -73,41 +75,49 @@ export function OcupacaoClient() {
       </div>
 
       {dados && (
-        <p className="text-sm text-muted-foreground">
-          {dados.diasComShooting} de {dados.totalDias} dias do mês com alguma
-          produção.
-        </p>
+        <section className="rounded-xl border bg-card p-5">
+          <p className="mb-1 font-mono text-3xl leading-none tabular-nums">
+            {dados.diasComShooting}
+            <span className="text-muted-foreground">/{dados.totalDias}</span>
+          </p>
+          <p className="mb-4 text-sm text-muted-foreground">
+            dias com produção no mês
+          </p>
+          <TiraDoMes
+            dias={dados.dias}
+            totalEstudios={dados.estudios.length}
+          />
+        </section>
       )}
 
-      <div className="flex flex-col divide-y rounded-lg border">
-        {(dados?.estudios ?? []).map((e) => (
-          <div key={e.id} className="flex items-center gap-4 px-4 py-3">
-            <span className="w-8 font-mono font-medium">{e.codigo}</span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="truncate text-muted-foreground">
-                  {e.nome}
-                  {e.ehComplementar && " · complementar"}
-                </span>
-                <span className="tabular-nums">
-                  {e.dias} {e.dias === 1 ? "dia" : "dias"} ·{" "}
-                  {Math.round(e.taxa * 100)}%
-                </span>
-              </div>
-              {/* barra relativa ao estúdio que mais rodou no mês */}
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${(e.taxa / maiorTaxa) * 100}%` }}
-                />
-              </div>
-            </div>
-            <span className="w-24 text-right text-sm tabular-nums">
-              {brl(e.receitaCents)}
-            </span>
-          </div>
-        ))}
-      </div>
+      <section className="rounded-xl border bg-card p-5">
+        <h2 className="mb-4 text-sm font-medium">Dias por estúdio</h2>
+        <BarrasHorizontais
+          itens={[...(dados?.estudios ?? [])]
+            .sort((a, b) => b.dias - a.dias)
+            .map((e, i) => ({
+              rotulo: e.codigo,
+              sub: `${Math.round(e.taxa * 100)}%`,
+              valor: e.dias,
+              destaque: i === 0 && e.dias > 0,
+            }))}
+          formatarValor={(v) => `${v} ${v === 1 ? "dia" : "dias"}`}
+        />
+      </section>
+
+      <section className="rounded-xl border bg-card p-5">
+        <h2 className="mb-4 text-sm font-medium">Receita atribuída</h2>
+        <BarrasHorizontais
+          itens={[...(dados?.estudios ?? [])]
+            .sort((a, b) => b.receitaCents - a.receitaCents)
+            .map((e, i) => ({
+              rotulo: e.codigo,
+              valor: e.receitaCents,
+              destaque: i === 0 && e.receitaCents > 0,
+            }))}
+          formatarValor={brl}
+        />
+      </section>
 
       <p className="text-xs text-muted-foreground">
         A receita é rateada entre os estúdios da reserva — A+B divide o total

@@ -2,28 +2,47 @@
 
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { TiraDoMes } from "@/components/viz/tira-do-mes";
+import { BarrasHorizontais } from "@/components/viz/barras";
+import { LinhaSaldo } from "@/components/viz/linha-saldo";
+import { VIZ } from "@/components/viz/tokens";
+import { cn } from "@/lib/utils";
 
 const brl = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
+const MESES = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
 
 /*
- * Domínio 8: a Home deixa de ser menu e vira painel de vigilância.
- * Bloco 1 "Precisa de você" · Bloco 2 "Hoje e amanhã" · Bloco 3 "O mês".
- * Tendência entra quando houver meses de história para comparar.
+ * Domínio 8 — a home dos sócios é painel de vigilância, não menu.
+ *
+ * A leitura tem uma ordem: o mês inteiro numa tira (o negócio é vender
+ * dia de estúdio), depois os números que resumem, depois o que precisa
+ * de decisão hoje. Números em mono — a ficha técnica é o ativo do Tino,
+ * e a cara do painel acompanha.
  */
 export function PainelClient() {
   const obrigacoes = trpc.financeiro.agendaDeObrigacoes.useQuery();
   const reservas = trpc.reservas.listar.useQuery();
   const agenda = trpc.reservas.agendaDoDia.useQuery();
   const estudios = trpc.estudios.listar.useQuery();
+  const caixa = trpc.financeiro.fluxoDeCaixa.useQuery({ meses: 3 });
+
+  const hoje = obrigacoes.data?.hoje ?? "";
+  const mesAtual = hoje.slice(0, 7);
+  const [ano, mes] = mesAtual ? mesAtual.split("-").map(Number) : [0, 0];
+  const ultimoDia = ano ? new Date(ano, mes, 0).getDate() : 30;
+  const ocupacao = trpc.reservas.ocupacao.useQuery(
+    { inicio: `${mesAtual}-01`, fim: `${mesAtual}-${ultimoDia}` },
+    { enabled: Boolean(mesAtual) }
+  );
 
   const porId = new Map((estudios.data ?? []).map((e) => [e.id, e.codigo]));
   const codigo = (id: number) => porId.get(id) ?? String(id);
@@ -32,138 +51,256 @@ export function PainelClient() {
   const naoEnviadas = (reservas.data ?? []).filter(
     (r) => r.status !== "cancelada" && !r.whatsappEnviadoEm
   );
-  const pendentes = (reservas.data ?? []).filter(
-    (r) => r.status === "pendente"
-  );
-  const precisaDeVoce = atrasadas.length + naoEnviadas.length;
+  const pendentes = (reservas.data ?? []).filter((r) => r.status === "pendente");
+  const precisaDeVoce = atrasadas.length + naoEnviadas.length + pendentes.length;
 
-  const mesAtual = (obrigacoes.data?.hoje ?? "").slice(0, 7);
   const aReceber = (obrigacoes.data?.itens ?? [])
     .filter((i) => i.tipo === "receber")
     .reduce((s, i) => s + (i.valorCents ?? 0), 0);
   const aPagar = (obrigacoes.data?.itens ?? [])
     .filter((i) => i.tipo === "pagar")
     .reduce((s, i) => s + (i.valorCents ?? 0), 0);
-  const diasOcupadosNoMes = new Set(
-    (reservas.data ?? [])
-      .filter(
-        (r) => r.status !== "cancelada" && r.dataInicio.startsWith(mesAtual)
-      )
-      .map((r) => r.dataInicio)
-  ).size;
+
+  const dias = ocupacao.data?.dias ?? [];
+  const diasVendidos = dias.filter((d) => d.estudios > 0).length;
+  const taxaMes = dias.length > 0 ? diasVendidos / dias.length : 0;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      {/* Bloco 1 — Precisa de você */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Precisa de você
-            {precisaDeVoce > 0 && (
-              <Badge className="ml-2 bg-[--attention]/15 text-[--attention]">
-                {precisaDeVoce}
-              </Badge>
+    <div className="flex flex-col gap-5">
+      {/* A tira do mês — a folha de contato do negócio */}
+      <section className="rounded-xl border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+              <span className="capitalize">{MESES[mes - 1] ?? ""}</span> {ano || ""}
+            </p>
+            <p className="mt-1 font-mono text-4xl leading-none tabular-nums sm:text-5xl">
+              {diasVendidos}
+              <span className="text-muted-foreground">/{dias.length || "—"}</span>
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              dias com produção · {Math.round(taxaMes * 100)}% do mês
+            </p>
+          </div>
+          <div className="flex gap-6">
+            <Numero
+              rotulo="a receber"
+              valor={brl(aReceber)}
+              /* verde só quando há o que receber — zero em verde mente */
+              cor={aReceber > 0 ? VIZ.status.ok : undefined}
+            />
+            <Numero rotulo="a pagar" valor={brl(aPagar)} />
+            {caixa.data?.configurado && (
+              <Numero
+                rotulo="em caixa"
+                valor={brl(caixa.data.saldoHoje)}
+                cor={
+                  caixa.data.saldoHoje < 0 ? VIZ.status.atraso : undefined
+                }
+              />
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          {obrigacoes.data && reservas.data && precisaDeVoce === 0 && (
-            <p className="text-muted-foreground">Tudo em dia.</p>
+          </div>
+        </div>
+        {dias.length > 0 && (
+          <TiraDoMes
+            dias={dias}
+            totalEstudios={(estudios.data ?? []).length}
+            hoje={hoje}
+          />
+        )}
+      </section>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        {/* Precisa de você — a coluna de decisão */}
+        <section className="rounded-xl border bg-card p-5">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-sm font-medium">Precisa de você</h2>
+            {precisaDeVoce > 0 && (
+              <span className="font-mono text-sm tabular-nums text-[--attention]">
+                {precisaDeVoce}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col divide-y text-sm">
+            {obrigacoes.data && reservas.data && precisaDeVoce === 0 && (
+              <p className="py-2 text-muted-foreground">Tudo em dia.</p>
+            )}
+            {atrasadas.slice(0, 3).map((i) => (
+              <Item
+                key={`${i.tipo}-${i.id}`}
+                href="/admin/financeiro"
+                marca={VIZ.status.atraso}
+                titulo={i.descricao}
+                detalhe={`vencia ${dataBr(i.data)}`}
+              />
+            ))}
+            {pendentes.slice(0, 3).map((r) => (
+              <Item
+                key={`p-${r.id}`}
+                href="/admin/reservas"
+                marca={VIZ.status.atencao}
+                titulo={`${r.codigo} aguarda confirmação`}
+                detalhe={dataBr(r.dataInicio)}
+              />
+            ))}
+            {naoEnviadas.slice(0, 3).map((r) => (
+              <Item
+                key={`e-${r.id}`}
+                href="/admin/reservas"
+                marca={VIZ.ramp[2]}
+                titulo={`${r.codigo} não foi enviada ao cliente`}
+                detalhe={dataBr(r.dataInicio)}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Ocupação por estúdio */}
+        <section className="rounded-xl border bg-card p-5">
+          <h2 className="mb-3 text-sm font-medium">Ocupação por estúdio</h2>
+          {(ocupacao.data?.estudios ?? []).length > 0 ? (
+            <BarrasHorizontais
+              itens={[...(ocupacao.data?.estudios ?? [])]
+                .sort((a, b) => b.dias - a.dias)
+                .map((e, i) => ({
+                  rotulo: e.codigo,
+                  sub: `${Math.round(e.taxa * 100)}%`,
+                  valor: e.dias,
+                  destaque: i === 0 && e.dias > 0,
+                }))}
+              formatarValor={(v) => `${v} ${v === 1 ? "dia" : "dias"}`}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Sem estúdios cadastrados.
+            </p>
           )}
-          {atrasadas.slice(0, 3).map((i) => (
+        </section>
+
+        {/* Hoje e amanhã */}
+        <section className="rounded-xl border bg-card p-5">
+          <h2 className="mb-3 text-sm font-medium">Hoje e amanhã</h2>
+          <div className="flex flex-col gap-2 text-sm">
+            {agenda.data && agenda.data.hoje.length === 0 && (
+              <p className="text-muted-foreground">Sem shooting hoje.</p>
+            )}
+            {(agenda.data?.hoje ?? []).map((r) => (
+              <div key={r.id} className="flex items-center gap-3">
+                <span className="font-mono tabular-nums text-muted-foreground">
+                  {r.horaInicio.slice(0, 5)}
+                </span>
+                <span className="font-mono font-medium">
+                  {r.estudioIds.map(codigo).join("+")}
+                </span>
+                <span className="truncate text-muted-foreground">
+                  {r.clienteNome ?? r.codigo}
+                </span>
+              </div>
+            ))}
+            <p className="mt-1 border-t pt-2 text-xs text-muted-foreground">
+              {agenda.data
+                ? agenda.data.amanha.length > 0
+                  ? `Amanhã tem shooting em ${[
+                      ...new Set(
+                        agenda.data.amanha.flatMap((r) =>
+                          r.estudioIds.map(codigo)
+                        )
+                      ),
+                    ].join(", ")} — a virada é hoje.`
+                  : "Amanhã livre."
+                : ""}
+            </p>
+          </div>
+        </section>
+
+        {/* Caixa projetado */}
+        <section className="rounded-xl border bg-card p-5">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-sm font-medium">Caixa projetado</h2>
             <Link
-              key={`${i.tipo}-${i.id}`}
               href="/admin/financeiro"
-              className="flex items-baseline justify-between gap-2 hover:underline"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
-              <span className="truncate">
-                <span className="text-[--overdue]">atrasada</span> · {i.descricao}
-              </span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                {dataBr(i.data)}
-              </span>
+              financeiro →
             </Link>
-          ))}
-          {naoEnviadas.slice(0, 3).map((r) => (
-            <Link
-              key={r.id}
-              href="/admin/reservas"
-              className="flex items-baseline justify-between gap-2 hover:underline"
-            >
-              <span className="truncate">
-                <span className="font-mono">{r.codigo}</span> não enviada ao
-                cliente
-              </span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                {dataBr(r.dataInicio)}
-              </span>
-            </Link>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Bloco 2 — Hoje e amanhã */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Hoje e amanhã</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          {agenda.data && agenda.data.hoje.length === 0 && (
-            <p className="text-muted-foreground">Sem shooting hoje.</p>
+          </div>
+          {caixa.data?.configurado ? (
+            <LinhaSaldo
+              pontos={[
+                {
+                  rotulo: "hoje",
+                  valor: caixa.data.saldoHoje,
+                },
+                ...caixa.data.projecao.map((m) => ({
+                  rotulo: `${m.mes.slice(5)}/${m.mes.slice(2, 4)}`,
+                  valor: m.saldoFinal,
+                })),
+              ]}
+              formatarValor={brl}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Informe o saldo da virada no Financeiro → Caixa para o caixa
+              deixar de partir do zero.
+            </p>
           )}
-          {(agenda.data?.hoje ?? []).map((r) => (
-            <div key={r.id} className="flex items-center gap-2">
-              <span className="font-mono tabular-nums text-muted-foreground">
-                {r.horaInicio.slice(0, 5)}
-              </span>
-              <span className="font-mono font-medium">
-                {r.estudioIds.map(codigo).join("+")}
-              </span>
-              <span className="truncate text-muted-foreground">
-                {r.clienteNome ?? r.codigo}
-              </span>
-            </div>
-          ))}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {agenda.data
-              ? agenda.data.amanha.length > 0
-                ? `Amanhã: shooting em ${[
-                    ...new Set(
-                      agenda.data.amanha.flatMap((r) =>
-                        r.estudioIds.map(codigo)
-                      )
-                    ),
-                  ].join(", ")} — virada hoje.`
-                : "Amanhã livre."
-              : ""}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Bloco 3 — O mês */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">O mês</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          <div className="flex items-baseline justify-between">
-            <span className="text-muted-foreground">a receber</span>
-            <span className="tabular-nums text-[--ok]">{brl(aReceber)}</span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-muted-foreground">a pagar</span>
-            <span className="tabular-nums">{brl(aPagar)}</span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-muted-foreground">dias com shooting</span>
-            <span className="tabular-nums">{diasOcupadosNoMes}</span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-muted-foreground">reservas pendentes</span>
-            <span className="tabular-nums">{pendentes.length}</span>
-          </div>
-        </CardContent>
-      </Card>
+        </section>
+      </div>
     </div>
+  );
+}
+
+function Numero({
+  rotulo,
+  valor,
+  cor,
+}: {
+  rotulo: string;
+  valor: string;
+  cor?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] tracking-wide text-muted-foreground uppercase">
+        {rotulo}
+      </span>
+      <span
+        className="font-mono text-lg tabular-nums sm:text-xl"
+        style={cor ? { color: cor } : undefined}
+      >
+        {valor}
+      </span>
+    </div>
+  );
+}
+
+function Item({
+  href,
+  marca,
+  titulo,
+  detalhe,
+}: {
+  href: string;
+  marca: string;
+  titulo: string;
+  detalhe: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 py-2 transition-colors hover:text-foreground",
+        "text-foreground/90"
+      )}
+    >
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: marca }}
+      />
+      <span className="min-w-0 flex-1 truncate">{titulo}</span>
+      <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+        {detalhe}
+      </span>
+    </Link>
   );
 }
