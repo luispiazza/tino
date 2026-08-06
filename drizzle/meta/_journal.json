@@ -64,6 +64,13 @@
       "when": 1786022947104,
       "tag": "0008_inventario",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786026329272,
+      "tag": "0009_escala_ponto",
+      "breakpoints": true
     }
   ]
 }

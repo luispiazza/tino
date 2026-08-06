@@ -10,7 +10,7 @@ import {
   pgEnum,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { pessoas } from "./pessoas";
+import { pessoas, turnos } from "./pessoas";
 import { estudios } from "./estudios";
 
 /*
@@ -95,6 +95,9 @@ export const ponto = pgTable("ponto", {
   data: date("data").notNull(),
   entrada: time("entrada"),
   saida: time("saida"),
+  /* o turno dá a jornada esperada — sem ele, não há contra o que
+   * comparar (era o problema 7 do Domínio 2 na v1) */
+  turnoId: integer("turno_id").references(() => turnos.id),
 });
 
 /* Folga não reatribui tarefa — sinaliza o turno descoberto. */
