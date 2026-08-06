@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { VIZ } from "./tokens";
 
 /*
@@ -13,9 +14,12 @@ import { VIZ } from "./tokens";
 export function BarrasHorizontais({
   itens,
   formatarValor,
+  larguraRotulo = "w-8",
 }: {
   itens: { rotulo: string; sub?: string; valor: number; destaque?: boolean }[];
   formatarValor: (v: number) => string;
+  /* código de estúdio cabe em w-8; nome de categoria precisa de mais */
+  larguraRotulo?: string;
 }) {
   const maior = Math.max(1, ...itens.map((i) => i.valor));
 
@@ -23,7 +27,15 @@ export function BarrasHorizontais({
     <div className="flex flex-col gap-2.5">
       {itens.map((i) => (
         <div key={i.rotulo} className="flex items-center gap-3">
-          <span className="w-8 shrink-0 font-mono text-sm">{i.rotulo}</span>
+          <span
+            className={cn(
+              "shrink-0 truncate font-mono text-sm",
+              larguraRotulo
+            )}
+            title={i.rotulo}
+          >
+            {i.rotulo}
+          </span>
           <div className="relative h-6 min-w-0 flex-1">
             {/* trilho recessivo, para a barra vazia ainda ter chão */}
             <div

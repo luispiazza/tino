@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
+import { BarrasHorizontais } from "@/components/viz/barras";
+import { Secao } from "@/components/viz/secao";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -142,6 +144,18 @@ export function DespesasClient() {
   const [recorrente, setRecorrente] = useState(recorrenteVazia);
   const [confirmandoId, setConfirmandoId] = useState<number | null>(null);
   const [valorConfirmacao, setValorConfirmacao] = useState("");
+
+  /* soma por categoria — só o que já tem valor; previsto sem valor
+   * ainda não é despesa, é lembrete */
+  const porCategoria = Object.entries(
+    (lancamentos.data ?? []).reduce<Record<string, number>>((acc, l) => {
+      if (l.valorCents === null || l.sentido !== "saida") return acc;
+      acc[l.categoria] = (acc[l.categoria] ?? 0) + l.valorCents;
+      return acc;
+    }, {})
+  )
+    .map(([categoria, cents]) => ({ categoria, cents }))
+    .sort((a, b) => b.cents - a.cents);
 
   return (
     <div className="flex flex-col gap-4">
@@ -349,6 +363,22 @@ export function DespesasClient() {
           </Dialog>
         </div>
       </div>
+
+      {/* comparar exige ao menos duas categorias — uma barra sozinha não
+          informa nada que o total já não diga */}
+      {porCategoria.length >= 2 && (
+        <Secao titulo="Para onde vai no mês">
+          <BarrasHorizontais
+            larguraRotulo="w-24"
+            itens={porCategoria.map((c, i) => ({
+              rotulo: c.categoria,
+              valor: c.cents,
+              destaque: i === 0,
+            }))}
+            formatarValor={brl}
+          />
+        </Secao>
+      )}
 
       {lancamentos.data?.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

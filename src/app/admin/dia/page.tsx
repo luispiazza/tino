@@ -21,9 +21,21 @@ export default function TelaDoDia() {
   const hoje = agenda.data?.hoje ?? [];
   const amanha = agenda.data?.amanha ?? [];
 
+  const dataHoje = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  }).format(new Date());
+
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6">
       <h1 className="text-xl font-semibold">Hoje</h1>
+      <p className="mt-0.5 text-sm text-muted-foreground first-letter:uppercase">
+        {dataHoje}
+        {hoje.length > 0 &&
+          ` · ${hoje.length} ${hoje.length === 1 ? "shooting" : "shootings"}`}
+      </p>
 
       {/* Shootings de hoje */}
       <section className="mt-4 flex flex-col gap-2">

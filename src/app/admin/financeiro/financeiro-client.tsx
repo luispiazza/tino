@@ -2,6 +2,8 @@
 
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
+import { Numero, Secao } from "@/components/viz/secao";
+import { VIZ } from "@/components/viz/tokens";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,7 +73,7 @@ function BadgeEstado({ estado }: { estado: string }) {
 export function FinanceiroClient() {
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold tracking-tight">Financeiro</h1>
+      <ResumoFinanceiro />
       <Tabs defaultValue="obrigacoes">
         <TabsList>
           <TabsTrigger value="obrigacoes">Obrigações</TabsTrigger>
@@ -93,6 +95,63 @@ export function FinanceiroClient() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+/*
+ * A linha de topo do financeiro: caixa hoje, o que vence e o que
+ * atrasou. Quem abre esta tela quer saber se o mês fecha, não navegar
+ * entre abas para descobrir.
+ */
+function ResumoFinanceiro() {
+  const caixa = trpc.financeiro.fluxoDeCaixa.useQuery({ meses: 3 });
+  const obrigacoes = trpc.financeiro.agendaDeObrigacoes.useQuery();
+
+  const itens = obrigacoes.data?.itens ?? [];
+  const atrasadas = itens.filter((i) => i.atrasada);
+  const atrasadoCents = atrasadas.reduce((s, i) => s + (i.valorCents ?? 0), 0);
+  const aReceber = itens
+    .filter((i) => i.tipo === "receber" && !i.atrasada)
+    .reduce((s, i) => s + (i.valorCents ?? 0), 0);
+  const aPagar = itens
+    .filter((i) => i.tipo === "pagar" && !i.atrasada)
+    .reduce((s, i) => s + (i.valorCents ?? 0), 0);
+
+  return (
+    <Secao className="flex flex-wrap items-end justify-between gap-6">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Financeiro</h1>
+        {caixa.data?.configurado ? (
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            saldo desde a virada de {caixa.data.dataVirada.split("-").reverse().join("/")}
+          </p>
+        ) : (
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            informe o saldo da virada na aba Caixa
+          </p>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-8">
+        {caixa.data?.configurado && (
+          <Numero
+            rotulo="em caixa hoje"
+            valor={brl(caixa.data.saldoHoje)}
+            tamanho="lg"
+            cor={caixa.data.saldoHoje < 0 ? VIZ.status.atraso : undefined}
+          />
+        )}
+        <Numero rotulo="a receber" valor={brl(aReceber)} />
+        <Numero rotulo="a pagar" valor={brl(aPagar)} />
+        {atrasadas.length > 0 && (
+          <Numero
+            rotulo="atrasado"
+            valor={brl(atrasadoCents)}
+            detalhe={`${atrasadas.length} ${atrasadas.length === 1 ? "conta" : "contas"}`}
+            cor={VIZ.status.atraso}
+          />
+        )}
+      </div>
+    </Secao>
   );
 }
 

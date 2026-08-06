@@ -142,10 +142,30 @@ export function ReservasClient() {
   const codigosEmConflito = [...new Set(conflitos.map((c) => c.codigo))];
   const criando = criar.isPending || criarCliente.isPending;
 
+  /* o resumo que interessa ao abrir a tela: o que está em pé e o que
+   * ainda depende de alguém */
+  const ativas = (reservas.data ?? []).filter((r) => r.status !== "cancelada");
+  const aguardando = ativas.filter((r) => r.status === "pendente").length;
+  const semEnvio = ativas.filter((r) => !r.whatsappEnviadoEm).length;
+  const resumo = reservas.data
+    ? [
+        `${ativas.length} ${ativas.length === 1 ? "reserva" : "reservas"}`,
+        aguardando > 0 && `${aguardando} aguardando confirmação`,
+        semEnvio > 0 && `${semEnvio} sem envio`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Reservas</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Reservas</h1>
+          {resumo && (
+            <p className="mt-0.5 text-sm text-muted-foreground">{resumo}</p>
+          )}
+        </div>
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger render={<Button />}>Nova reserva</DialogTrigger>
           <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-md">
