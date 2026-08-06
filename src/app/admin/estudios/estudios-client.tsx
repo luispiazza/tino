@@ -105,8 +105,20 @@ export function EstudiosClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Estúdios</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Estúdios</h1>
+          {lista.data && lista.data.length > 0 && (
+            <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
+              {lista.data.filter((e) => !e.ehComplementar).length} principais ·{" "}
+              {lista.data.filter((e) => e.ehComplementar).length} complementares
+              {(() => {
+                const semFicha = lista.data.filter((e) => !e.fichaTecnica).length;
+                return semFicha > 0 ? ` · ${semFicha} sem ficha técnica` : "";
+              })()}
+            </p>
+          )}
+        </div>
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger render={<Button onClick={abrirNovo} />}>
             Cadastrar estúdio

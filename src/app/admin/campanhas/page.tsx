@@ -52,7 +52,12 @@ export default function CampanhasAdmin() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-3 text-xl font-semibold">Resultados</h1>
+      <div className="mb-3">
+        <h1 className="text-xl font-semibold">Resultados</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          de onde vêm os contatos e o que vira reserva
+        </p>
+      </div>
       <ResultadosClient />
 
       <div className="mt-10 flex items-center justify-between">

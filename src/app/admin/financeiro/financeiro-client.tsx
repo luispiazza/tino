@@ -108,14 +108,22 @@ function ResumoFinanceiro() {
   const obrigacoes = trpc.financeiro.agendaDeObrigacoes.useQuery();
 
   const itens = obrigacoes.data?.itens ?? [];
-  const atrasadas = itens.filter((i) => i.atrasada);
-  const atrasadoCents = atrasadas.reduce((s, i) => s + (i.valorCents ?? 0), 0);
-  const aReceber = itens
-    .filter((i) => i.tipo === "receber" && !i.atrasada)
-    .reduce((s, i) => s + (i.valorCents ?? 0), 0);
-  const aPagar = itens
-    .filter((i) => i.tipo === "pagar" && !i.atrasada)
-    .reduce((s, i) => s + (i.valorCents ?? 0), 0);
+  /*
+   * "a receber" e "a pagar" são o TOTAL em aberto — atrasado incluído.
+   * O atraso é um qualificador do mesmo dinheiro, não uma terceira
+   * pilha: separar as duas coisas fazia a mesma palavra somar valores
+   * diferentes em telas diferentes.
+   */
+  const soma = (tipo: "receber" | "pagar", apenasAtrasadas = false) =>
+    itens
+      .filter((i) => i.tipo === tipo && (!apenasAtrasadas || i.atrasada))
+      .reduce((s, i) => s + (i.valorCents ?? 0), 0);
+
+  const aReceber = soma("receber");
+  const aPagar = soma("pagar");
+  const receberAtrasado = soma("receber", true);
+  const pagarAtrasado = soma("pagar", true);
+  const contasAtrasadas = itens.filter((i) => i.atrasada).length;
 
   return (
     <Secao className="flex flex-wrap items-end justify-between gap-6">
@@ -140,16 +148,23 @@ function ResumoFinanceiro() {
             cor={caixa.data.saldoHoje < 0 ? VIZ.status.atraso : undefined}
           />
         )}
-        <Numero rotulo="a receber" valor={brl(aReceber)} />
-        <Numero rotulo="a pagar" valor={brl(aPagar)} />
-        {atrasadas.length > 0 && (
-          <Numero
-            rotulo="atrasado"
-            valor={brl(atrasadoCents)}
-            detalhe={`${atrasadas.length} ${atrasadas.length === 1 ? "conta" : "contas"}`}
-            cor={VIZ.status.atraso}
-          />
-        )}
+        <Numero
+          rotulo="a receber"
+          valor={brl(aReceber)}
+          detalhe={
+            receberAtrasado > 0 ? `${brl(receberAtrasado)} atrasado` : undefined
+          }
+          cor={aReceber > 0 ? VIZ.status.ok : undefined}
+        />
+        <Numero
+          rotulo="a pagar"
+          valor={brl(aPagar)}
+          detalhe={
+            pagarAtrasado > 0
+              ? `${brl(pagarAtrasado)} atrasado · ${contasAtrasadas} ${contasAtrasadas === 1 ? "conta" : "contas"}`
+              : undefined
+          }
+        />
       </div>
     </Secao>
   );

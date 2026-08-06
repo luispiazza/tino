@@ -46,9 +46,26 @@ const formVazio = {
 };
 
 export function RentalClient() {
+  const catalogo = trpc.rental.catalogo.useQuery();
+  const itens = catalogo.data ?? [];
+  const naContagem = itens.filter((i) => i.qtdEsperada !== null).length;
+  const resumo = catalogo.data
+    ? itens.length === 0
+      ? "catálogo vazio"
+      : [
+          `${itens.length} ${itens.length === 1 ? "item" : "itens"}`,
+          naContagem > 0 && `${naContagem} na contagem`,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+    : "";
+
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold tracking-tight">Rental</h1>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Rental</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{resumo}</p>
+      </div>
       <Tabs defaultValue="catalogo">
         <TabsList>
           <TabsTrigger value="catalogo">Catálogo</TabsTrigger>

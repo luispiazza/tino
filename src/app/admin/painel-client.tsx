@@ -6,6 +6,7 @@ import { TiraDoMes } from "@/components/viz/tira-do-mes";
 import { BarrasHorizontais } from "@/components/viz/barras";
 import { LinhaSaldo } from "@/components/viz/linha-saldo";
 import { VIZ } from "@/components/viz/tokens";
+import { Numero } from "@/components/viz/secao";
 import { cn } from "@/lib/utils";
 
 const brl = (cents: number) =>
@@ -54,12 +55,15 @@ export function PainelClient() {
   const pendentes = (reservas.data ?? []).filter((r) => r.status === "pendente");
   const precisaDeVoce = atrasadas.length + naoEnviadas.length + pendentes.length;
 
-  const aReceber = (obrigacoes.data?.itens ?? [])
-    .filter((i) => i.tipo === "receber")
-    .reduce((s, i) => s + (i.valorCents ?? 0), 0);
-  const aPagar = (obrigacoes.data?.itens ?? [])
-    .filter((i) => i.tipo === "pagar")
-    .reduce((s, i) => s + (i.valorCents ?? 0), 0);
+  /* mesma definição do Financeiro: total em aberto, atrasado incluído —
+   * a palavra tem que somar o mesmo valor nas duas telas */
+  const soma = (tipo: "receber" | "pagar", apenasAtrasadas = false) =>
+    (obrigacoes.data?.itens ?? [])
+      .filter((i) => i.tipo === tipo && (!apenasAtrasadas || i.atrasada))
+      .reduce((s, i) => s + (i.valorCents ?? 0), 0);
+  const aReceber = soma("receber");
+  const aPagar = soma("pagar");
+  const pagarAtrasado = soma("pagar", true);
 
   const dias = ocupacao.data?.dias ?? [];
   const diasVendidos = dias.filter((d) => d.estudios > 0).length;
@@ -89,7 +93,13 @@ export function PainelClient() {
               /* verde só quando há o que receber — zero em verde mente */
               cor={aReceber > 0 ? VIZ.status.ok : undefined}
             />
-            <Numero rotulo="a pagar" valor={brl(aPagar)} />
+            <Numero
+              rotulo="a pagar"
+              valor={brl(aPagar)}
+              detalhe={
+                pagarAtrasado > 0 ? `${brl(pagarAtrasado)} atrasado` : undefined
+              }
+            />
             {caixa.data?.configurado && (
               <Numero
                 rotulo="em caixa"
@@ -246,30 +256,6 @@ export function PainelClient() {
           )}
         </section>
       </div>
-    </div>
-  );
-}
-
-function Numero({
-  rotulo,
-  valor,
-  cor,
-}: {
-  rotulo: string;
-  valor: string;
-  cor?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] tracking-wide text-muted-foreground uppercase">
-        {rotulo}
-      </span>
-      <span
-        className="font-mono text-lg tabular-nums sm:text-xl"
-        style={cor ? { color: cor } : undefined}
-      >
-        {valor}
-      </span>
     </div>
   );
 }

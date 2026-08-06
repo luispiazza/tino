@@ -77,8 +77,21 @@ export function PessoasClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Pessoas</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Pessoas</h1>
+          {lista.data && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {lista.data.length === 0
+                ? "ninguém cadastrado"
+                : `${lista.data.filter((p) => p.ativo).length} ${
+                    lista.data.filter((p) => p.ativo).length === 1
+                      ? "pessoa ativa"
+                      : "pessoas ativas"
+                  }`}
+            </p>
+          )}
+        </div>
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger
             render={
