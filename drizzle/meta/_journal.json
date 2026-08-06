@@ -71,6 +71,13 @@
       "when": 1786026329272,
       "tag": "0009_escala_ponto",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786040597163,
+      "tag": "0010_pagina_estudio",
+      "breakpoints": true
     }
   ]
 }

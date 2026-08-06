@@ -5,6 +5,7 @@ import {
   text,
   integer,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 /*
@@ -19,6 +20,19 @@ export const estudios = pgTable("estudios", {
   areaM2: integer("area_m2"),
   ehComplementar: boolean("eh_complementar").notNull().default(false),
   fichaTecnica: text("ficha_tecnica"),
+  /*
+   * A página do estúdio é o que responde antes da ligação — e o que o
+   * Google indexa. Tudo aqui é cadastro, editável no admin: nenhum
+   * texto de venda mora no código.
+   */
+  visaoGeral: text("visao_geral"),
+  /* [{ valor: "60a", rotulo: "PTV e Camlock" }] — os números que decidem */
+  specs: jsonb("specs").$type<{ valor: string; rotulo: string }[]>(),
+  /* ["Camarim exclusivo com banheiro", "Cozinha completa"] */
+  caracteristicas: jsonb("caracteristicas").$type<string[]>(),
+  plantaBaixaUrl: varchar("planta_baixa_url", { length: 300 }),
+  plantaEletricaUrl: varchar("planta_eletrica_url", { length: 300 }),
+  fotoUrl: varchar("foto_url", { length: 300 }),
 });
 
 /* B depende de A; C depende de A e de E. */

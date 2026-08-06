@@ -1,10 +1,12 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import Image from "next/image";
+import Link from "next/link";
 import { db } from "@/server/db";
 import { estudios } from "@/server/db/schema";
 import type { Campanha } from "@/server/routers/campanhas";
 import { MonteSeuTino } from "./monte-seu-tino";
+import { Planta } from "./planta";
 
 /*
  * A vitrine — Domínio 6, decisões de 29/07: uma vitrine forte, não
@@ -27,6 +29,16 @@ function videoDoHero(): string | null {
   const arquivo = path.join(process.cwd(), "public", "video", "hero.mp4");
   return existsSync(arquivo) ? "/video/hero.mp4" : null;
 }
+
+/*
+ * Plantas do acervo. O B não tem planta própria: ele aparece dentro da
+ * planta do A, que é como o espaço existe de verdade.
+ */
+const PLANTAS: Record<string, { baixa: string; eletrica?: string }> = {
+  A: { baixa: "/plantas/baixa-a.png", eletrica: "/plantas/eletrica-a.png" },
+  C: { baixa: "/plantas/baixa-c.png", eletrica: "/plantas/eletrica-c.png" },
+  E: { baixa: "/plantas/baixa-e.png", eletrica: "/plantas/eletrica-e.png" },
+};
 
 /* Fotos do acervo do estúdio (repo tino-estudio). Estúdio sem foto
  * aparece sem imagem, nunca com placeholder genérico. */
@@ -63,6 +75,9 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
   const complementares = lista.filter((e) => e.ehComplementar);
 
   const video = campanha?.heroVideoUrl ?? videoDoHero();
+  /* os números da etiqueta saem do cadastro, não de texto fixo */
+  const areaTotal = lista.reduce((s, e) => s + (e.areaM2 ?? 0), 0);
+  const entradas = new Set(lista.map((e) => e.endereco).filter(Boolean)).size;
 
   return (
     <>
@@ -152,6 +167,28 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
       </header>
 
       <div className="mx-auto flex max-w-4xl flex-col gap-20 px-6 py-16 sm:py-24">
+      {/* A etiqueta do complexo: número específico vale mais que adjetivo */}
+      <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4">
+        {[
+          { valor: `${areaTotal || 500}`, unidade: "m²", rotulo: "no total" },
+          { valor: `${lista.length || 4}`, unidade: "", rotulo: "espaços" },
+          { valor: `${entradas || 2}`, unidade: "", rotulo: "entradas independentes" },
+          { valor: "10", unidade: "m", rotulo: "de pé-direito" },
+        ].map((s) => (
+          <div key={s.rotulo} className="flex flex-col gap-1 bg-background p-6">
+            <span className="font-mono text-3xl leading-none tabular-nums">
+              {s.valor}
+              {s.unidade && (
+                <span className="text-lg text-muted-foreground">
+                  {s.unidade}
+                </span>
+              )}
+            </span>
+            <span className="text-xs text-muted-foreground">{s.rotulo}</span>
+          </div>
+        ))}
+      </section>
+
       {/* Combinações — a prateleira. Complementar não aparece sozinho. */}
       <section className="flex flex-col gap-6">
         <h2 className="text-sm tracking-widest text-muted-foreground uppercase">
@@ -159,18 +196,22 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {COMBINACOES.map((c) => (
-            <div
+            <a
               key={c.nome}
-              className="flex flex-col gap-2 rounded-2xl border p-6"
+              href="#monte"
+              className="group flex flex-col gap-3 rounded-2xl border p-6 transition-colors hover:border-foreground/30"
             >
-              <span className="font-mono text-2xl font-semibold">{c.nome}</span>
-              <span className="text-sm text-muted-foreground tabular-nums">
+              <span className="font-mono text-3xl font-semibold tracking-tight">
+                {c.nome}
+              </span>
+              <span className="font-mono text-sm text-muted-foreground tabular-nums">
                 {c.areaM2} m²
               </span>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {c.descricao}
-              </p>
-            </div>
+              <p className="text-sm text-muted-foreground">{c.descricao}</p>
+              <span className="mt-auto pt-3 text-sm text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                montar esta →
+              </span>
+            </a>
           ))}
         </div>
       </section>
@@ -198,43 +239,73 @@ export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
           <h2 className="text-sm tracking-widest text-muted-foreground uppercase">
             Os espaços
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-10">
             {[...principais, ...complementares].map((e) => (
-              <div key={e.id} className="overflow-hidden rounded-2xl border">
-                {FOTOS[e.codigo] && (
-                  <Image
-                    src={FOTOS[e.codigo]}
-                    alt={`Estúdio ${e.codigo}`}
-                    width={1920}
-                    height={1080}
-                    sizes="(min-width: 640px) 50vw, 100vw"
-                    className="aspect-[16/10] w-full object-cover"
-                  />
-                )}
-                <div className="p-6">
-                <div className="flex items-baseline gap-3">
-                  <span className="font-mono text-xl font-semibold">
-                    {e.codigo}
-                  </span>
-                  <span className="text-muted-foreground">{e.nome}</span>
-                  {e.areaM2 && (
-                    <span className="ml-auto text-sm text-muted-foreground tabular-nums">
-                      {e.areaM2} m²
-                    </span>
+              <article key={e.id} className="flex flex-col gap-5">
+                <div className="grid gap-5 sm:grid-cols-[1fr_1.2fr] sm:items-start">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-mono text-4xl font-semibold leading-none">
+                        {e.codigo}
+                      </span>
+                      {e.areaM2 && (
+                        <span className="font-mono text-lg text-muted-foreground tabular-nums">
+                          {e.areaM2} m²
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-lg">{e.nome}</p>
+                    {e.ehComplementar && (
+                      <p className="text-xs tracking-wide text-muted-foreground uppercase">
+                        complementar — entra junto de um principal
+                      </p>
+                    )}
+                    {(e.visaoGeral || e.fichaTecnica) && (
+                      <p className="text-sm whitespace-pre-line text-muted-foreground">
+                        {e.visaoGeral ?? e.fichaTecnica}
+                      </p>
+                    )}
+                    {(e.specs ?? []).length > 0 && (
+                      <ul className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
+                        {(e.specs ?? []).map((s) => (
+                          <li key={s.rotulo}>
+                            <span className="text-foreground">{s.valor}</span>{" "}
+                            {s.rotulo}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {e.endereco && (
+                      <p className="text-sm text-muted-foreground">
+                        {e.endereco}
+                      </p>
+                    )}
+                    <Link
+                      href={`/estudio/${e.codigo.toLowerCase()}`}
+                      className="mt-1 w-fit text-sm text-primary underline-offset-4 hover:underline"
+                    >
+                      Ver o {e.nome} →
+                    </Link>
+                  </div>
+                  {FOTOS[e.codigo] && (
+                    <Image
+                      src={FOTOS[e.codigo]}
+                      alt={`Estúdio ${e.codigo}`}
+                      width={1920}
+                      height={1080}
+                      sizes="(min-width: 640px) 55vw, 100vw"
+                      className="aspect-[16/10] w-full rounded-2xl object-cover"
+                    />
                   )}
                 </div>
-                {e.ehComplementar && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    complementar — entra junto de um principal
-                  </p>
+                {PLANTAS[e.codigo] && (
+                  <Planta
+                    estudio={e.codigo}
+                    baixa={PLANTAS[e.codigo].baixa}
+                    eletrica={PLANTAS[e.codigo].eletrica}
+                  />
                 )}
-                {e.fichaTecnica && (
-                  <p className="mt-3 text-sm whitespace-pre-line text-muted-foreground">
-                    {e.fichaTecnica}
-                  </p>
-                )}
-                </div>
-              </div>
+              </article>
             ))}
           </div>
         </section>
