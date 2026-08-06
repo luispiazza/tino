@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ResultadosClient } from "./resultados-client";
 
 /*
  * Campanhas — lista com preview do que está gravado em cada landing:
@@ -51,8 +52,11 @@ export default function CampanhasAdmin() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Campanhas</h1>
+      <h1 className="mb-3 text-xl font-semibold">Resultados</h1>
+      <ResultadosClient />
+
+      <div className="mt-10 flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Campanhas</h2>
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger render={<Button />}>Nova campanha</DialogTrigger>
           <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-md">

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { estudios } from "@/server/db/schema";
 import type { DB } from "@/server/db";
 import { criarBancoDeTeste, criarCaller, sessaoFake } from "./helpers";
 
@@ -51,6 +52,70 @@ describe("campanhas e instrumentação", () => {
     expect(codigoCurto).toMatch(/^M-/);
     const funil = await socio().campanhas.funil();
     expect(funil[0].campanhaId).toBeNull();
+  });
+
+  it("o código do site na reserva fecha o funil e atribui a receita", async () => {
+    const s = socio();
+    await s.campanhas.criar({ slug: "moda-verao", nome: "Moda Verão" });
+    const { codigoCurto } = await publico().campanhas.gravarMontagem({
+      combinacao: "A+B",
+      campanhaSlug: "moda-verao",
+    });
+    await publico().campanhas.marcarCliqueWhatsapp({ codigoCurto });
+
+    const [estudio] = await db
+      .insert(estudios)
+      .values({ codigo: "A", nome: "Estúdio A" })
+      .returning();
+    await s.reservas.criar({
+      dataInicio: "2026-10-01",
+      dataFim: "2026-10-01",
+      horaInicio: "07:00",
+      horaFim: "19:00",
+      estudioIds: [estudio.id],
+      valorDiariaCents: 300000,
+      descontoCents: 0,
+      codigoMontagem: codigoCurto,
+    });
+
+    const [origem] = await s.campanhas.resultados();
+    expect(origem.nome).toBe("Moda Verão");
+    expect(origem.montagens).toBe(1);
+    expect(origem.conversas).toBe(1);
+    expect(origem.reservas).toBe(1);
+    expect(origem.receitaCents).toBe(300000);
+  });
+
+  it("sem código, a origem fica desconhecida — não se chuta campanha", async () => {
+    const s = socio();
+    await s.campanhas.criar({ slug: "moda-verao", nome: "Moda Verão" });
+    await publico().campanhas.gravarMontagem({ campanhaSlug: "moda-verao" });
+
+    const [estudio] = await db
+      .insert(estudios)
+      .values({ codigo: "A", nome: "Estúdio A" })
+      .returning();
+    await s.reservas.criar({
+      dataInicio: "2026-10-02",
+      dataFim: "2026-10-02",
+      horaInicio: "07:00",
+      horaFim: "19:00",
+      estudioIds: [estudio.id],
+      valorDiariaCents: 300000,
+      descontoCents: 0,
+    });
+
+    const [origem] = await s.campanhas.resultados();
+    expect(origem.montagens).toBe(1);
+    expect(origem.reservas).toBe(0);
+    expect(origem.receitaCents).toBe(0);
+  });
+
+  it("montagem orgânica aparece como origem própria", async () => {
+    await publico().campanhas.gravarMontagem({ combinacao: "E+C" });
+    const [origem] = await socio().campanhas.resultados();
+    expect(origem.nome).toBe("Orgânico / direto");
+    expect(origem.campanhaId).toBeNull();
   });
 
   it("funcionário não cria campanha; público não lê o funil", async () => {

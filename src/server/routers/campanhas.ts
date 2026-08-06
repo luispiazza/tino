@@ -3,7 +3,8 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { router, publicProcedure, socioProcedure } from "../trpc";
-import { campanhas, montagens } from "../db/schema";
+import { campanhas, montagens, reservas } from "../db/schema";
+import { montarComanda } from "../reservas/comanda";
 import { auditar } from "../auditoria";
 
 export type Campanha = typeof campanhas.$inferSelect;
@@ -172,5 +173,66 @@ export const campanhasRouter = router({
       })
       .from(montagens)
       .groupBy(montagens.campanhaId, montagens.etapa);
+  }),
+
+  /*
+   * O painel de resultados — Domínio 9. Cada linha é uma origem
+   * (campanha ou orgânico) com o funil inteiro: montagens feitas na
+   * vitrine, quantas viraram conversa e quantas viraram reserva, com a
+   * receita que veio delas. Sem isso, campanha é achismo.
+   */
+  resultados: socioProcedure.query(async ({ ctx }) => {
+    const linhas = await ctx.db
+      .select({
+        campanhaId: montagens.campanhaId,
+        campanhaNome: campanhas.nome,
+        campanhaSlug: campanhas.slug,
+        canal: campanhas.canal,
+        etapa: montagens.etapa,
+        reserva: reservas,
+      })
+      .from(montagens)
+      .leftJoin(campanhas, eq(montagens.campanhaId, campanhas.id))
+      .leftJoin(reservas, eq(montagens.reservaId, reservas.id));
+
+    const porOrigem = new Map<
+      string,
+      {
+        campanhaId: number | null;
+        nome: string;
+        slug: string | null;
+        canal: string | null;
+        montagens: number;
+        conversas: number;
+        reservas: number;
+        receitaCents: number;
+      }
+    >();
+
+    for (const l of linhas) {
+      const chave = l.campanhaId === null ? "organico" : String(l.campanhaId);
+      const atual = porOrigem.get(chave) ?? {
+        campanhaId: l.campanhaId,
+        nome: l.campanhaNome ?? "Orgânico / direto",
+        slug: l.campanhaSlug,
+        canal: l.canal,
+        montagens: 0,
+        conversas: 0,
+        reservas: 0,
+        receitaCents: 0,
+      };
+      atual.montagens++;
+      if (l.etapa === "clique_whatsapp" || l.etapa === "reserva")
+        atual.conversas++;
+      if (l.etapa === "reserva" && l.reserva) {
+        atual.reservas++;
+        if (l.reserva.status !== "cancelada") {
+          atual.receitaCents += montarComanda(l.reserva).totalCents ?? 0;
+        }
+      }
+      porOrigem.set(chave, atual);
+    }
+
+    return [...porOrigem.values()].sort((a, b) => b.montagens - a.montagens);
   }),
 });

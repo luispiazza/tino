@@ -7,7 +7,13 @@ import {
   socioProcedure,
   router,
 } from "../trpc";
-import { clientes, cobrancas, reservaEstudios, reservas } from "../db/schema";
+import {
+  clientes,
+  cobrancas,
+  montagens,
+  reservaEstudios,
+  reservas,
+} from "../db/schema";
 import {
   buscarConflitos,
   complementaresSemBase,
@@ -64,6 +70,9 @@ export const reservasRouter = router({
           valorDiariaCents: z.number().int().nonnegative().nullish(),
           valorHoraExtraCents: z.number().int().nonnegative().nullish(),
           descontoCents: z.number().int().nonnegative().default(0),
+          /* o código que o cliente trouxe do Monte seu Tino (M-XXXX):
+           * é ele que fecha o funil montagem → conversa → reserva */
+          codigoMontagem: z.string().max(8).optional(),
         })
         .refine((p) => p.dataFim >= p.dataInicio, {
           message: "dataFim antes de dataInicio",
@@ -119,8 +128,17 @@ export const reservasRouter = router({
             estudioId,
           }))
         );
+        /* atribuição da origem: sem código, a reserva simplesmente não
+         * tem origem conhecida — nunca se chuta uma campanha */
+        if (input.codigoMontagem) {
+          await tx
+            .update(montagens)
+            .set({ etapa: "reserva", reservaId: reserva.id })
+            .where(eq(montagens.codigoCurto, input.codigoMontagem.trim()));
+        }
         await auditar(tx, ctx.session, "criar", "reserva", reserva.id, {
           codigo,
+          codigoMontagem: input.codigoMontagem ?? null,
           dataInicio: input.dataInicio,
           dataFim: input.dataFim,
           estudioIds: input.estudioIds,

@@ -54,6 +54,7 @@ const formVazio = {
   valorDiaria: "",
   valorHoraExtra: "",
   desconto: "",
+  codigoMontagem: "",
 };
 
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
@@ -122,6 +123,7 @@ export function ReservasClient() {
       valorDiariaCents: paraCents(form.valorDiaria),
       valorHoraExtraCents: paraCents(form.valorHoraExtra),
       descontoCents: paraCents(form.desconto) ?? 0,
+      codigoMontagem: form.codigoMontagem.trim().toUpperCase() || undefined,
     });
   }
 
@@ -337,6 +339,22 @@ export function ReservasClient() {
                   />
                 </div>
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="codigoMontagem">
+                  Código do site (se o cliente trouxe)
+                </Label>
+                <Input
+                  id="codigoMontagem"
+                  placeholder="M-7KPQ"
+                  maxLength={8}
+                  className="font-mono"
+                  value={form.codigoMontagem}
+                  onChange={(e) =>
+                    setForm({ ...form, codigoMontagem: e.target.value })
+                  }
+                />
+              </div>
+
               {totalPrevisto !== null && (
                 <p className="text-sm text-muted-foreground">
                   {diasEscolhidos}{" "}
