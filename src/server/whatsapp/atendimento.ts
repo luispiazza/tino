@@ -108,6 +108,33 @@ export async function atender(
     .returning({ id: whatsappMensagens.id });
   if (gravada.length === 0) return;
 
+  /*
+   * Daqui para baixo, qualquer exceção vira linha no histórico em vez de
+   * sumir no log do servidor. A mensagem do contato já está gravada, então
+   * uma falha silenciosa deixa a tela com cara de "não aconteceu nada" —
+   * indistinguível de IA desligada, de conversa pausada e de horário
+   * fechado. Quem está olhando o histórico precisa ver a diferença.
+   */
+  try {
+    await responderSePuder(db, config, contato, identidade, msg, baseUrl);
+  } catch (e) {
+    await db.insert(whatsappMensagens).values({
+      contatoId: contato.id,
+      autor: "ia",
+      texto: "(sem resposta)",
+      erro: (e instanceof Error ? e.message : String(e)).slice(0, 300),
+    });
+  }
+}
+
+async function responderSePuder(
+  db: DB,
+  config: Config,
+  contato: typeof whatsappContatos.$inferSelect,
+  identidade: Awaited<ReturnType<typeof registrarContato>>["identidade"],
+  msg: MensagemRecebida,
+  baseUrl: string
+): Promise<void> {
   /* chave geral desligada: registra a conversa, não responde */
   if (!config.iaAtiva) return;
 

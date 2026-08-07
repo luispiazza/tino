@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   clientes,
   estudios,
@@ -174,6 +174,15 @@ describe("base de conhecimento viva — o problema 2 da v1", () => {
     expect(texto).not.toContain("30,00");
   });
 
+  it("cadastro torto não emudece o agente — a base é montada a cada conversa", async () => {
+    /* jsonb promete lista, o banco aceita qualquer JSON */
+    await db.execute(
+      sql`insert into estudios (codigo, nome, specs) values ('A', 'Estúdio A', '{"nao":"e lista"}'::jsonb)`
+    );
+    const texto = await montarConhecimento(db);
+    expect(texto).toContain("Estúdio A");
+  });
+
   it("marca o complementar para a IA não vender B sozinho", async () => {
     const [a] = await db
       .insert(estudios)
@@ -247,6 +256,21 @@ describe("atendimento — as portas antes de a IA falar", () => {
     expect(linhas).toHaveLength(2);
     /* as duas são do contato: a IA ficou quieta */
     expect(linhas.every((l) => l.autor === "contato")).toBe(true);
+  });
+
+  it("falha depois da gravação vira linha visível, não silêncio", async () => {
+    await garantirConfig(db);
+    await db.update(whatsappConfig).set({ iaAtiva: true }).where(eq(whatsappConfig.id, 1));
+    /* quebra o banco por baixo para simular um estouro qualquer no caminho */
+    await db.execute(sql`drop table itens cascade`);
+
+    await atender(db, msg("wamid.III"), BASE_TESTE);
+
+    const linhas = await db.select().from(whatsappMensagens);
+    const daIa = linhas.find((l) => l.autor === "ia");
+    /* o agente não respondeu, mas o histórico diz por quê */
+    expect(daIa).toBeDefined();
+    expect(daIa?.erro).toBeTruthy();
   });
 
   it("pausa vencida devolve a conversa à IA sozinha — o problema 4 da v1", async () => {

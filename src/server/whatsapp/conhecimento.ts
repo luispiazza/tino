@@ -59,8 +59,18 @@ export async function montarConhecimento(db: DB): Promise<string> {
       );
     }
     if (e.visaoGeral) linhas.push(e.visaoGeral);
-    for (const s of e.specs ?? []) linhas.push(`- ${s.rotulo}: ${s.valor}`);
-    for (const c of e.caracteristicas ?? []) linhas.push(`- ${c}`);
+    /*
+     * `specs` e `caracteristicas` são jsonb: o tipo promete lista, o banco
+     * aceita qualquer JSON. Uma linha malformada no cadastro derrubaria o
+     * atendimento de TODOS os contatos, porque a base é montada a cada
+     * conversa. Ignorar o campo torto é melhor que emudecer o agente.
+     */
+    if (Array.isArray(e.specs)) {
+      for (const s of e.specs) linhas.push(`- ${s.rotulo}: ${s.valor}`);
+    }
+    if (Array.isArray(e.caracteristicas)) {
+      for (const c of e.caracteristicas) linhas.push(`- ${c}`);
+    }
     if (e.fichaTecnica) linhas.push(e.fichaTecnica);
     partes.push(linhas.join("\n"));
   }
