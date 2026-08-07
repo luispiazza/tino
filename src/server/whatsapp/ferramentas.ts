@@ -12,8 +12,6 @@ import { montarComanda } from "../reservas/comanda";
 import { enviarAvisoHandoff } from "./cliente";
 import { formatarTelefone } from "./telefone";
 
-const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tinoestudio.com.br";
-
 /*
  * Formato de function calling da OpenAI — é o que o gateway do Forge
  * espera, e o mesmo que a v1 usava. Tipo local em vez de SDK: a única
@@ -36,6 +34,12 @@ export interface ContextoFerramentas {
   clienteId: number | null;
   telefoneAviso: string | null;
   retomadaHoras: number;
+  /*
+   * Chega pronta de quem atendeu o pedido, nunca lida do ambiente aqui.
+   * É o endereço que vai na mão do cliente dentro do link do portal, e
+   * um domínio chutado como padrão dá 404 sem ninguém ficar sabendo.
+   */
+  baseUrl: string;
 }
 
 /*
@@ -302,12 +306,12 @@ async function minhasReservas(
       }
       if (r.tokenPortalProdutor) {
         linhas.push(
-          `Portal do produtor (extras e check-in): ${BASE}/portal/produtor/${r.tokenPortalProdutor}`
+          `Portal do produtor (extras e check-in): ${ctx.baseUrl}/portal/produtor/${r.tokenPortalProdutor}`
         );
       }
       if (r.tokenPortalReserva) {
         linhas.push(
-          `Portal da reserva: ${BASE}/portal/reserva/${r.tokenPortalReserva}`
+          `Portal da reserva: ${ctx.baseUrl}/portal/reserva/${r.tokenPortalReserva}`
         );
       }
       return linhas.join("\n");
@@ -345,7 +349,7 @@ async function escalar(
       `Atendimento no WhatsApp precisa de você (${motivo.replace(/_/g, " ")}).`,
       `Contato: ${ctx.nomeContato ?? "sem nome"} — ${formatarTelefone(ctx.telefone)}`,
       resumo,
-      `${BASE}/admin/whatsapp`,
+      `${ctx.baseUrl}/admin/whatsapp`,
     ].join("\n");
 
     const { erro } = await enviarAvisoHandoff(ctx.telefoneAviso, aviso);

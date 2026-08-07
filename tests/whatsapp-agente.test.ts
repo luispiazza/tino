@@ -10,6 +10,8 @@ import { criarBancoDeTeste } from "./helpers";
  * afirma é o envelope que sai e o laço de ferramentas que volta, que é
  * exatamente a parte impossível de exercitar sem gastar chamada real.
  */
+const BASE_TESTE = "https://tino-v2-production.up.railway.app";
+
 let db: DB;
 let contatoId: number;
 
@@ -73,6 +75,7 @@ const pedir = () =>
       clienteId: null,
       telefoneAviso: null,
       retomadaHoras: 24,
+      baseUrl: BASE_TESTE,
     },
     papel: "desconhecido",
     conhecimento: "## Estúdios\n### A — Estúdio A",
@@ -103,6 +106,7 @@ describe("agente — o envelope que vai para o Forge", () => {
         clienteId: null,
         telefoneAviso: null,
         retomadaHoras: 24,
+        baseUrl: BASE_TESTE,
       },
       papel: "cliente",
       conhecimento: "",

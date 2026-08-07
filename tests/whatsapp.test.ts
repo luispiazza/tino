@@ -21,6 +21,8 @@ import { executarFerramenta } from "@/server/whatsapp/ferramentas";
 import { appRouter } from "@/server/routers/_app";
 import { criarBancoDeTeste, criarCaller, criarCtx, sessaoFake } from "./helpers";
 
+const BASE_TESTE = "https://tino-v2-production.up.railway.app";
+
 let db: DB;
 
 beforeEach(async () => {
@@ -199,15 +201,15 @@ describe("atendimento — as portas antes de a IA falar", () => {
   });
 
   it("a mesma mensagem reentregue pela Meta não é atendida duas vezes", async () => {
-    await atender(db, msg("wamid.AAA"));
-    await atender(db, msg("wamid.AAA"));
+    await atender(db, msg("wamid.AAA"), BASE_TESTE);
+    await atender(db, msg("wamid.AAA"), BASE_TESTE);
 
     const linhas = await db.select().from(whatsappMensagens);
     expect(linhas).toHaveLength(1);
   });
 
   it("com a IA desligada, grava a conversa e não responde", async () => {
-    await atender(db, msg("wamid.BBB"));
+    await atender(db, msg("wamid.BBB"), BASE_TESTE);
     const linhas = await db.select().from(whatsappMensagens);
     expect(linhas).toHaveLength(1);
     expect(linhas[0].autor).toBe("contato");
@@ -218,11 +220,11 @@ describe("atendimento — as portas antes de a IA falar", () => {
   });
 
   it("o papel é reescrito quando o cadastro muda, sem reprocessar nada", async () => {
-    await atender(db, msg("wamid.CCC"));
+    await atender(db, msg("wamid.CCC"), BASE_TESTE);
     expect((await db.select().from(whatsappContatos))[0].papel).toBe("desconhecido");
 
     await db.insert(clientes).values({ nome: "Ana", telefone: "11999350085" });
-    await atender(db, msg("wamid.DDD"));
+    await atender(db, msg("wamid.DDD"), BASE_TESTE);
 
     const [contato] = await db.select().from(whatsappContatos);
     expect(contato.papel).toBe("cliente");
@@ -231,7 +233,7 @@ describe("atendimento — as portas antes de a IA falar", () => {
 
   it("conversa com humano no comando não recebe resposta da IA", async () => {
     /* o contato nasce com a IA desligada, para o agente não entrar aqui */
-    await atender(db, msg("wamid.EEE"));
+    await atender(db, msg("wamid.EEE"), BASE_TESTE);
 
     const daqui2h = new Date();
     daqui2h.setHours(daqui2h.getHours() + 2);
@@ -239,7 +241,7 @@ describe("atendimento — as portas antes de a IA falar", () => {
     await garantirConfig(db);
     await db.update(whatsappConfig).set({ iaAtiva: true }).where(eq(whatsappConfig.id, 1));
 
-    await atender(db, msg("wamid.FFF", "e aí?"));
+    await atender(db, msg("wamid.FFF", "e aí?"), BASE_TESTE);
 
     const linhas = await db.select().from(whatsappMensagens);
     expect(linhas).toHaveLength(2);
@@ -248,7 +250,7 @@ describe("atendimento — as portas antes de a IA falar", () => {
   });
 
   it("pausa vencida devolve a conversa à IA sozinha — o problema 4 da v1", async () => {
-    await atender(db, msg("wamid.GGG"));
+    await atender(db, msg("wamid.GGG"), BASE_TESTE);
 
     const ontem = new Date();
     ontem.setDate(ontem.getDate() - 1);
@@ -256,7 +258,7 @@ describe("atendimento — as portas antes de a IA falar", () => {
     await garantirConfig(db);
     await db.update(whatsappConfig).set({ iaAtiva: true }).where(eq(whatsappConfig.id, 1));
 
-    await atender(db, msg("wamid.HHH", "voltei"));
+    await atender(db, msg("wamid.HHH", "voltei"), BASE_TESTE);
 
     const [contato] = await db.select().from(whatsappContatos);
     expect(contato.iaPausadaAte).toBeNull();
@@ -298,6 +300,7 @@ describe("ferramentas — a guarda que o portal web não tem", () => {
     clienteId,
     telefoneAviso: null,
     retomadaHoras: 24,
+    baseUrl: BASE_TESTE,
   });
 
   it("saber o código da reserva alheia não abre os dados dela", async () => {
@@ -343,7 +346,12 @@ describe("ferramentas — a guarda que o portal web não tem", () => {
 
     const r = await executarFerramenta(ctxDe(dele.id, bruno.id), "buscar_reserva", {});
     expect(r.texto).toContain("T_01092026A");
-    expect(r.texto).toContain("/portal/produtor/");
+    /*
+     * O link sai da base recebida, nunca de domínio embutido: um padrão
+     * chutado manda o cliente para um 404 sem ninguém ficar sabendo.
+     */
+    expect(r.texto).toContain(`${BASE_TESTE}/portal/produtor/${"f".repeat(64)}`);
+    expect(r.texto).not.toContain("tinoestudio.com.br");
   });
 
   it("disponibilidade sai da regra única e enxerga o conflito", async () => {
@@ -508,6 +516,7 @@ describe("admin — quem pode mexer", () => {
         clienteId: null,
         telefoneAviso: null,
         retomadaHoras: 24,
+        baseUrl: BASE_TESTE,
       },
       "escalar_para_humano",
       { motivo: "pedido_explicito", resumo: "pediu humano" }

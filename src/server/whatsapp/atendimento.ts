@@ -78,7 +78,11 @@ export interface MensagemRecebida {
  *  - `iaPausadaAte` no futuro: humano está com a conversa. A v1 pausava
  *    para sempre; aqui o prazo expira e a IA volta sozinha.
  */
-export async function atender(db: DB, msg: MensagemRecebida): Promise<void> {
+export async function atender(
+  db: DB,
+  msg: MensagemRecebida,
+  baseUrl: string
+): Promise<void> {
   const config = await garantirConfig(db);
   const { contato, identidade } = await registrarContato(
     db,
@@ -158,6 +162,7 @@ export async function atender(db: DB, msg: MensagemRecebida): Promise<void> {
       clienteId: identidade.clienteId,
       telefoneAviso: config.telefoneAviso,
       retomadaHoras: config.retomadaHoras,
+      baseUrl,
     },
     papel: identidade.papel,
     conhecimento,

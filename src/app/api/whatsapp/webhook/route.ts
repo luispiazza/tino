@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { atender } from "@/server/whatsapp/atendimento";
 import { lerCredenciais } from "@/server/whatsapp/cliente";
+import { baseParaLinks } from "@/server/whatsapp/url";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,13 @@ export async function POST(req: Request) {
     return new Response("ok", { status: 200 });
   }
 
+  /*
+   * Os links de portal que a IA manda saem daqui: o domínio público se
+   * estiver configurado, senão o host que a Meta acabou de chamar — que,
+   * por definição, é um endereço que responde.
+   */
+  const base = baseParaLinks(req);
+
   for (const entrada of corpo.entry ?? []) {
     for (const mudanca of entrada.changes ?? []) {
       const valor = mudanca.value;
@@ -78,12 +86,16 @@ export async function POST(req: Request) {
         const perfil = valor.contacts?.find((c) => c.wa_id === telefone);
 
         try {
-          await atender(db, {
-            telefone,
-            nomePerfil: perfil?.profile?.name ?? null,
-            texto,
-            wamid,
-          });
+          await atender(
+            db,
+            {
+              telefone,
+              nomePerfil: perfil?.profile?.name ?? null,
+              texto,
+              wamid,
+            },
+            base
+          );
         } catch (e) {
           /*
            * Uma mensagem que estoura não pode derrubar o lote nem virar

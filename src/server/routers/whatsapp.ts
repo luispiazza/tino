@@ -12,25 +12,8 @@ import { auditar } from "../auditoria";
 import { garantirConfig } from "../whatsapp/atendimento";
 import { estadoCredenciais, enviarTexto, verificarStatus } from "../whatsapp/cliente";
 import { montarConhecimento } from "../whatsapp/conhecimento";
+import { urlDoWebhook } from "../whatsapp/url";
 
-/*
- * A URL do webhook sai do host que está servindo ESTA página, nunca de
- * variável de ambiente. O campo existe para ser colado no App Dashboard
- * da Meta: uma URL derivada de `NEXT_PUBLIC_SITE_URL` aponta para o
- * domínio público — que pode não ser o deploy que está rodando — e o
- * erro é silencioso, porque a tela mostra um endereço plausível que
- * simplesmente não recebe nada.
- */
-function urlDoWebhook(req: Request): string {
-  const host =
-    req.headers.get("x-forwarded-host") ??
-    req.headers.get("host") ??
-    new URL(req.url).host;
-  const protocolo =
-    req.headers.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") ? "http" : "https");
-  return `${protocolo}://${host}/api/whatsapp/webhook`;
-}
 
 /*
  * Domínio 5 no admin. Tudo aqui é `socioProcedure`: configuração de
