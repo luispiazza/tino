@@ -10,6 +10,7 @@ import { escalaRouter } from "./escala";
 import { rentalRouter } from "./rental";
 import { financeiroRouter } from "./financeiro";
 import { campanhasRouter } from "./campanhas";
+import { whatsappRouter } from "./whatsapp";
 
 export const appRouter = router({
   auditoria: auditoriaRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   rental: rentalRouter,
   financeiro: financeiroRouter,
   campanhas: campanhasRouter,
+  whatsapp: whatsappRouter,
 });
 
 export type AppRouter = typeof appRouter;

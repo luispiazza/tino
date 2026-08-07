@@ -7,3 +7,4 @@ export * from "./rotina";
 export * from "./rental";
 export * from "./financeiro";
 export * from "./campanhas";
+export * from "./whatsapp";
