@@ -1,4 +1,3 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { and, desc, eq, inArray, gte } from "drizzle-orm";
 import type { DB } from "../db";
 import {
@@ -14,6 +13,20 @@ import { enviarAvisoHandoff } from "./cliente";
 import { formatarTelefone } from "./telefone";
 
 const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tinoestudio.com.br";
+
+/*
+ * Formato de function calling da OpenAI — é o que o gateway do Forge
+ * espera, e o mesmo que a v1 usava. Tipo local em vez de SDK: a única
+ * coisa que este arquivo precisa saber do LLM é o formato do envelope.
+ */
+export interface FerramentaLLM {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
 
 export interface ContextoFerramentas {
   db: DB;
@@ -32,87 +45,102 @@ export interface ContextoFerramentas {
  * volume e baixo risco: agente que tenta cobrir tudo no lançamento falha
  * de forma visível e é desligado em torno de 90 dias.
  */
-export const ferramentasCliente: Anthropic.Tool[] = [
+export const ferramentasCliente: FerramentaLLM[] = [
   {
-    name: "consultar_disponibilidade",
-    description:
-      "Verifica se um ou mais estúdios estão livres num período. Use SEMPRE " +
-      "antes de dizer qualquer coisa sobre data livre — nunca prometa " +
-      "disponibilidade de cabeça. Devolve os estúdios livres e os ocupados.",
-    input_schema: {
-      type: "object",
-      properties: {
-        estudios: {
-          type: "array",
-          items: { type: "string" },
-          description: 'Códigos dos estúdios, como ["A", "B"].',
+    type: "function",
+    function: {
+      name: "consultar_disponibilidade",
+      description:
+        "Verifica se um ou mais estúdios estão livres num período. Use SEMPRE " +
+        "antes de dizer qualquer coisa sobre data livre — nunca prometa " +
+        "disponibilidade de cabeça. Devolve os estúdios livres e os ocupados.",
+      parameters: {
+        type: "object",
+        properties: {
+          estudios: {
+            type: "array",
+            items: { type: "string" },
+            description: 'Códigos dos estúdios, como ["A", "B"].',
+          },
+          data_inicio: { type: "string", description: "AAAA-MM-DD" },
+          data_fim: {
+            type: "string",
+            description: "AAAA-MM-DD. Igual à inicial se for um dia só.",
+          },
+          hora_inicio: {
+            type: "string",
+            description: "HH:MM. Use 08:00 se a pessoa não especificou.",
+          },
+          hora_fim: {
+            type: "string",
+            description: "HH:MM. Use 18:00 se a pessoa não especificou.",
+          },
         },
-        data_inicio: { type: "string", description: "AAAA-MM-DD" },
-        data_fim: {
-          type: "string",
-          description: "AAAA-MM-DD. Igual à inicial se for um dia só.",
-        },
-        hora_inicio: {
-          type: "string",
-          description: "HH:MM. Use 08:00 se a pessoa não especificou.",
-        },
-        hora_fim: {
-          type: "string",
-          description: "HH:MM. Use 18:00 se a pessoa não especificou.",
-        },
-      },
-      required: ["estudios", "data_inicio", "data_fim", "hora_inicio", "hora_fim"],
-    },
-  },
-  {
-    name: "buscar_reserva",
-    description:
-      "Dados das reservas de quem está falando, com os links dos portais. " +
-      "Só devolve reserva cujo telefone bate com o do contato — nunca a de " +
-      "outra pessoa, mesmo que o código seja informado.",
-    input_schema: {
-      type: "object",
-      properties: {
-        codigo: {
-          type: "string",
-          description:
-            "Código da reserva (T_DDMMAAAAX). Omita para listar as próximas.",
-        },
+        required: [
+          "estudios",
+          "data_inicio",
+          "data_fim",
+          "hora_inicio",
+          "hora_fim",
+        ],
       },
     },
   },
   {
-    name: "escalar_para_humano",
-    description:
-      "Passa a conversa para uma pessoa do estúdio e avisa o sócio. Use " +
-      "sempre que: pedirem um humano, falarem em fechar reserva, perguntarem " +
-      "valor de diária, reclamarem, você ficar em dúvida sobre a resposta, ou " +
-      "o assunto sair do que você pode resolver. Depois de chamar, avise a " +
-      "pessoa que alguém do estúdio assume a conversa.",
-    input_schema: {
-      type: "object",
-      properties: {
-        motivo: {
-          type: "string",
-          enum: [
-            "pedido_explicito",
-            "confianca_baixa",
-            "sentimento_negativo",
-            "fechar_reserva",
-            "valor",
-            "reclamacao",
-            "fora_de_escopo",
-          ],
-        },
-        resumo: {
-          type: "string",
-          description:
-            "O que a pessoa quer e o que você já apurou (datas, estúdios, " +
-            "nome, contexto). Quem assumir lê isto para não perguntar tudo " +
-            "de novo.",
+    type: "function",
+    function: {
+      name: "buscar_reserva",
+      description:
+        "Dados das reservas de quem está falando, com os links dos portais. " +
+        "Só devolve reserva cujo telefone bate com o do contato — nunca a de " +
+        "outra pessoa, mesmo que o código seja informado.",
+      parameters: {
+        type: "object",
+        properties: {
+          codigo: {
+            type: "string",
+            description:
+              "Código da reserva (T_DDMMAAAAX). Omita para listar as próximas.",
+          },
         },
       },
-      required: ["motivo", "resumo"],
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "escalar_para_humano",
+      description:
+        "Passa a conversa para uma pessoa do estúdio e avisa o sócio. Use " +
+        "sempre que: pedirem um humano, falarem em fechar reserva, perguntarem " +
+        "valor de diária, reclamarem, você ficar em dúvida sobre a resposta, ou " +
+        "o assunto sair do que você pode resolver. Depois de chamar, avise a " +
+        "pessoa que alguém do estúdio assume a conversa.",
+      parameters: {
+        type: "object",
+        properties: {
+          motivo: {
+            type: "string",
+            enum: [
+              "pedido_explicito",
+              "confianca_baixa",
+              "sentimento_negativo",
+              "fechar_reserva",
+              "valor",
+              "reclamacao",
+              "fora_de_escopo",
+            ],
+          },
+          resumo: {
+            type: "string",
+            description:
+              "O que a pessoa quer e o que você já apurou (datas, estúdios, " +
+              "nome, contexto). Quem assumir lê isto para não perguntar tudo " +
+              "de novo.",
+          },
+        },
+        required: ["motivo", "resumo"],
+      },
     },
   },
 ];

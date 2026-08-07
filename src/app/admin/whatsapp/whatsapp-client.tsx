@@ -191,7 +191,7 @@ function Conexao({
     phoneNumberId: string | null;
     wabaId: string | null;
     verifyToken: boolean;
-    anthropic: boolean;
+    llm: boolean;
   };
   webhookUrl: string;
   telefoneAviso: string | null;
@@ -249,9 +249,9 @@ function Conexao({
             variavel="WHATSAPP_VERIFY_TOKEN"
           />
           <LinhaCredencial
-            rotulo="Chave da Anthropic (o agente)"
-            presente={credenciais.anthropic}
-            variavel="ANTHROPIC_API_KEY"
+            rotulo="Chave do Forge (o modelo que responde)"
+            presente={credenciais.llm}
+            variavel="FORGE_API_KEY"
           />
         </div>
         <Button

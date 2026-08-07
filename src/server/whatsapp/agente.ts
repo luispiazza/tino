@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import {
   executarFerramenta,
   ferramentasCliente,
@@ -10,8 +9,48 @@ import type { PapelWhatsapp } from "./identidade";
  * Um agente só. A v1 tinha dois (`whatsappWebhook.ts` e `routers/whatsappAi.ts`)
  * que já haviam divergido — só um deles ignorava mensagem de grupo. Aqui
  * existe este caminho e nenhum outro.
+ *
+ * O LLM é o mesmo da v1: Gemini 2.5 Flash pelo gateway do Forge (Manus),
+ * numa API compatível com a da OpenAI. Decisão de 07/08 — o Forge já
+ * atendia o estúdio e a chave já existe, então trocar de provedor seria
+ * custo novo sem pedido de ninguém.
+ *
+ * A amarra a conhecer: essa chave é da plataforma que a v2 está deixando
+ * para trás. Se a assinatura do Manus cair, o atendimento cai junto —
+ * e o conserto é uma variável de ambiente, porque só este arquivo fala
+ * com o modelo.
  */
-const MODELO = "claude-opus-5";
+const MODELO = process.env.FORGE_MODELO ?? "gemini-2.5-flash";
+const BASE_FORGE = process.env.FORGE_API_URL ?? "https://forge.manus.im";
+
+/* A v1 chamava a variável de OPENAI_API_KEY mesmo apontando para o Forge. */
+const chave = () => process.env.FORGE_API_KEY ?? process.env.OPENAI_API_KEY;
+
+/* ------------------------- o envelope da API compatível com a da OpenAI */
+
+interface ChamadaFerramenta {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+interface MensagemLLM {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  name?: string;
+  tool_call_id?: string;
+  tool_calls?: ChamadaFerramenta[];
+}
+
+interface RespostaLLM {
+  choices?: {
+    message?: {
+      content?: string | null;
+      tool_calls?: ChamadaFerramenta[];
+    };
+    finish_reason?: string | null;
+  }[];
+}
 
 /*
  * §5.3.3 — o que a IA nunca faz. A linha que não pode ser cruzada numa IA
@@ -115,14 +154,40 @@ const PAPEL_BASE =
   "fotografia e vídeo na Vila Romana, em São Paulo. Você fala em nome do " +
   "estúdio com quem procura o número comercial.";
 
+async function chamarLLM(
+  mensagens: MensagemLLM[],
+  apiKey: string
+): Promise<RespostaLLM> {
+  const r = await fetch(`${BASE_FORGE.replace(/\/$/, "")}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: MODELO,
+      messages: mensagens,
+      tools: ferramentasCliente,
+      tool_choice: "auto",
+      max_tokens: 32768,
+      /* os dois valores vieram da v1 — mantidos para não mudar o comportamento */
+      thinking: { budget_tokens: 128 },
+    }),
+  });
+
+  if (!r.ok) {
+    throw new Error(`Forge ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  }
+  return (await r.json()) as RespostaLLM;
+}
+
 export async function responder(
   pedido: PedidoResposta
 ): Promise<RespostaAgente> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { texto: null, escalou: false, erro: "ANTHROPIC_API_KEY ausente" };
+  const apiKey = chave();
+  if (!apiKey) {
+    return { texto: null, escalou: false, erro: "FORGE_API_KEY ausente" };
   }
-
-  const client = new Anthropic();
 
   const instrucoes = [
     pedido.systemPrompt?.trim() || PAPEL_BASE,
@@ -133,43 +198,26 @@ export async function responder(
       ? `# Política comercial e tom (cadastro do estúdio)\n${pedido.politica.trim()}`
       : null,
     `# Cadastro do estúdio\nEstes dados vêm do sistema e estão sempre atuais.\n\n${pedido.conhecimento}`,
+    contextoDeHoje(),
   ]
     .filter(Boolean)
     .join("\n\n");
 
-  const mensagens: Anthropic.MessageParam[] = pedido.historico.map((t) => ({
-    role: t.autor === "contato" ? ("user" as const) : ("assistant" as const),
-    content: t.texto,
-  }));
+  const mensagens: MensagemLLM[] = [
+    { role: "system", content: instrucoes },
+    ...pedido.historico.map((t) => ({
+      role: t.autor === "contato" ? ("user" as const) : ("assistant" as const),
+      content: t.texto,
+    })),
+  ];
 
   let escalou = false;
 
   /* teto de voltas: nenhuma conversa de atendimento precisa de mais */
   for (let volta = 0; volta < 6; volta++) {
-    let resposta: Anthropic.Message;
+    let resposta: RespostaLLM;
     try {
-      resposta = await client.messages.create({
-        model: MODELO,
-        max_tokens: 8192,
-        thinking: { type: "adaptive" },
-        /* atendimento é síncrono: quem mandou a mensagem está esperando */
-        output_config: { effort: "low" },
-        system: [
-          {
-            type: "text",
-            text: instrucoes,
-            /* prefixo estável entre conversas — cabe cache */
-            cache_control: { type: "ephemeral" },
-          },
-          /*
-           * Depois do ponto de cache, de propósito: a data muda a cada
-           * minuto e, no prefixo, invalidaria o cache em toda mensagem.
-           */
-          { type: "text", text: contextoDeHoje() },
-        ],
-        tools: ferramentasCliente,
-        messages: mensagens,
-      });
+      resposta = await chamarLLM(mensagens, apiKey);
     } catch (e) {
       return {
         texto: null,
@@ -178,38 +226,62 @@ export async function responder(
       };
     }
 
-    /* checar antes de ler o conteúdo: numa recusa ele vem vazio */
-    if (resposta.stop_reason === "refusal") {
-      return { texto: null, escalou, erro: "resposta recusada pelo modelo" };
-    }
+    const escolha = resposta.choices?.[0];
+    const chamadas = escolha?.message?.tool_calls ?? [];
 
-    if (resposta.stop_reason !== "tool_use") {
-      const texto = resposta.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
+    if (chamadas.length === 0) {
+      const texto = escolha?.message?.content?.trim() ?? "";
       return { texto: texto || null, escalou, erro: null };
     }
 
-    mensagens.push({ role: "assistant", content: resposta.content });
+    mensagens.push({
+      role: "assistant",
+      content: escolha?.message?.content ?? "",
+      tool_calls: chamadas,
+    });
 
-    const resultados: Anthropic.ToolResultBlockParam[] = [];
-    for (const bloco of resposta.content) {
-      if (bloco.type !== "tool_use") continue;
-      const saida = await executarFerramenta(
-        pedido.ctx,
-        bloco.name,
-        (bloco.input ?? {}) as Record<string, unknown>
-      );
+    for (const chamada of chamadas) {
+      /*
+       * Argumento vem como string de JSON e o modelo às vezes erra a mão.
+       * Devolver o erro como resultado deixa ele corrigir na volta
+       * seguinte; estourar aqui perderia a conversa inteira.
+       */
+      let entrada: Record<string, unknown> = {};
+      let saida: { texto: string; escalou: boolean };
+      try {
+        entrada = JSON.parse(chamada.function.arguments || "{}");
+      } catch {
+        mensagens.push({
+          role: "tool",
+          tool_call_id: chamada.id,
+          name: chamada.function.name,
+          content: "Argumentos inválidos: mande um JSON válido.",
+        });
+        continue;
+      }
+
+      try {
+        saida = await executarFerramenta(
+          pedido.ctx,
+          chamada.function.name,
+          entrada
+        );
+      } catch (e) {
+        console.error("[whatsapp] ferramenta falhou", chamada.function.name, e);
+        saida = {
+          texto: "Não foi possível completar essa consulta agora.",
+          escalou: false,
+        };
+      }
+
       if (saida.escalou) escalou = true;
-      resultados.push({
-        type: "tool_result",
-        tool_use_id: bloco.id,
+      mensagens.push({
+        role: "tool",
+        tool_call_id: chamada.id,
+        name: chamada.function.name,
         content: saida.texto,
       });
     }
-    mensagens.push({ role: "user", content: resultados });
   }
 
   return {
