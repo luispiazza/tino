@@ -56,8 +56,8 @@ function LinhaContagem({
         <Badge
           className={cn(
             diferenca < 0
-              ? "bg-[--overdue]/15 text-[--overdue]"
-              : "bg-[--ok]/15 text-[--ok]"
+              ? "bg-overdue/15 text-overdue"
+              : "bg-ok/15 text-ok"
           )}
         >
           {diferenca > 0 ? `+${diferenca}` : diferenca}
@@ -182,11 +182,11 @@ export function InventarioClient() {
                 </span>
                 <span className="ml-auto">
                   {h.faltando > 0 ? (
-                    <span className="text-[--overdue]">
+                    <span className="text-overdue">
                       {h.faltando} faltando
                     </span>
                   ) : (
-                    <span className="text-[--ok]">completo</span>
+                    <span className="text-ok">completo</span>
                   )}
                 </span>
               </div>

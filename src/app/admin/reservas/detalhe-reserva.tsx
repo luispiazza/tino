@@ -124,10 +124,10 @@ export function DetalheReserva({
               <div className="flex items-center justify-between gap-3">
                 <DialogTitle className="font-mono">{r.codigo}</DialogTitle>
                 {r.status === "confirmada" && (
-                  <Badge className="bg-[--ok]/15 text-[--ok]">confirmada</Badge>
+                  <Badge className="bg-ok/15 text-ok">confirmada</Badge>
                 )}
                 {r.status === "pendente" && (
-                  <Badge className="bg-[--attention]/15 text-[--attention]">
+                  <Badge className="bg-attention/15 text-attention">
                     pendente
                   </Badge>
                 )}
@@ -175,7 +175,7 @@ export function DetalheReserva({
                     {" → "}
                     {r.checkOutEm ? horaCurtaBr(r.checkOutEm) : "em andamento"}
                     {r.comanda.horasExtras > 0 && (
-                      <span className="text-[--attention]">
+                      <span className="text-attention">
                         {" "}
                         · {r.comanda.horasExtras}h extra
                       </span>
@@ -290,8 +290,8 @@ export function DetalheReserva({
                           ["paga", "nf_emitida", "conciliada"].includes(
                             c.estado
                           )
-                            ? "bg-[--ok]/15 text-[--ok]"
-                            : "bg-[--attention]/15 text-[--attention]"
+                            ? "bg-ok/15 text-ok"
+                            : "bg-attention/15 text-attention"
                         }
                       >
                         {ROTULO_COBRANCA[c.estado] ?? c.estado}

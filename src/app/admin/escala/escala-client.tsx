@@ -283,7 +283,7 @@ export function EscalaClient() {
                   </span>
                   {t.descoberto ? (
                     <>
-                      <Badge className="bg-[--attention]/15 text-[--attention]">
+                      <Badge className="bg-attention/15 text-attention">
                         descoberto
                       </Badge>
                       {/* quem cobre se decide no dia — dá para preencher aqui */}
@@ -329,8 +329,8 @@ export function EscalaClient() {
                       <Badge
                         className={cn(
                           t.jornada.diferencaMin > 0
-                            ? "bg-[--attention]/15 text-[--attention]"
-                            : "bg-[--overdue]/15 text-[--overdue]"
+                            ? "bg-attention/15 text-attention"
+                            : "bg-overdue/15 text-overdue"
                         )}
                       >
                         {formatarHoras(t.jornada.diferencaMin)}

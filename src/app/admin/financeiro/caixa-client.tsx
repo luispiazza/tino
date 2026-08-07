@@ -145,7 +145,7 @@ export function CaixaClient() {
           <p
             className={cn(
               "text-3xl font-semibold tabular-nums",
-              (d?.saldoHoje ?? 0) < 0 && "text-[--overdue]"
+              (d?.saldoHoje ?? 0) < 0 && "text-overdue"
             )}
           >
             {d ? brl(d.saldoHoje) : "—"}
@@ -176,12 +176,12 @@ export function CaixaClient() {
                 <td className="px-4 py-2">
                   {rotuloMes(m.mes)}
                   {m.semValor > 0 && (
-                    <span className="ml-2 text-xs text-[--attention]">
+                    <span className="ml-2 text-xs text-attention">
                       {m.semValor} conta{m.semValor > 1 ? "s" : ""} sem valor
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums text-[--ok]">
+                <td className="px-4 py-2 text-right tabular-nums text-ok">
                   {m.entradas > 0 ? brl(m.entradas) : "—"}
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums">
@@ -190,7 +190,7 @@ export function CaixaClient() {
                 <td
                   className={cn(
                     "px-4 py-2 text-right font-medium tabular-nums",
-                    m.saldoFinal < 0 && "text-[--overdue]"
+                    m.saldoFinal < 0 && "text-overdue"
                   )}
                 >
                   {brl(m.saldoFinal)}

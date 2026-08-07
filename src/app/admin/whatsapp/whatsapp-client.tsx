@@ -83,7 +83,7 @@ export function WhatsappClient() {
       </Cabecalho>
 
       {!config.iaAtiva && (
-        <p className="rounded-lg border border-[--border] px-3 py-2 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
           Desligada, a IA não responde. As mensagens continuam chegando e
           ficando gravadas no histórico.
         </p>
@@ -141,7 +141,7 @@ function Secao({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-4 rounded-xl border border-[--border] p-4">
+    <section className="mt-4 rounded-xl border border-border p-4">
       <h2 className="font-semibold">{titulo}</h2>
       <p className="mt-0.5 mb-4 text-sm text-muted-foreground">{descricao}</p>
       {children}
@@ -163,7 +163,7 @@ function LinhaCredencial({
   variavel: string;
 }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-[--border] py-2 last:border-0">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border py-2 last:border-0">
       <div>
         <p className="text-sm">{rotulo}</p>
         <p className="font-mono text-xs text-muted-foreground">{variavel}</p>
@@ -173,7 +173,7 @@ function LinhaCredencial({
           {valor ?? "configurado"}
         </span>
       ) : (
-        <span className="text-xs text-[--attention]">faltando</span>
+        <span className="text-xs text-attention">faltando</span>
       )}
     </div>
   );
@@ -313,7 +313,7 @@ function Conexao({
         descricao="No App Dashboard → WhatsApp → Configuration, cole esta URL, use o mesmo Verify Token do serviço e inscreva o campo “messages”."
       >
         <div className="flex flex-wrap items-center gap-2">
-          <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-[--border] px-3 py-2 font-mono text-xs whitespace-nowrap">
+          <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border px-3 py-2 font-mono text-xs whitespace-nowrap">
             {webhookUrl}
           </code>
           <Button
@@ -521,7 +521,7 @@ function ComportamentoIA({
           {verBase ? "Esconder" : "Mostrar"}
         </Button>
         {verBase && (
-          <pre className="mt-4 max-h-96 overflow-auto rounded-lg border border-[--border] p-3 font-mono text-xs whitespace-pre-wrap">
+          <pre className="mt-4 max-h-96 overflow-auto rounded-lg border border-border p-3 font-mono text-xs whitespace-pre-wrap">
             {conhecimento.isLoading
               ? "Carregando…"
               : conhecimento.data || "Cadastro vazio."}
@@ -576,8 +576,8 @@ function Historico() {
 
   return (
     <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,18rem)_1fr]">
-      <div className="rounded-xl border border-[--border]">
-        <div className="border-b border-[--border] p-3">
+      <div className="rounded-xl border border-border">
+        <div className="border-b border-border p-3">
           <h2 className="font-semibold">Conversas</h2>
           <p className="text-xs text-muted-foreground">
             Abra uma para ler e responder.
@@ -596,7 +596,7 @@ function Historico() {
             <li key={c.id}>
               <button
                 onClick={() => setContatoId(c.id)}
-                className={`w-full border-b border-[--border] p-3 text-left last:border-0 hover:bg-accent/50 ${
+                className={`w-full border-b border-border p-3 text-left last:border-0 hover:bg-accent/50 ${
                   c.id === contatoId ? "bg-accent" : ""
                 }`}
               >
@@ -612,7 +612,7 @@ function Historico() {
                   {c.ultima?.texto ?? "—"}
                 </p>
                 {c.handoff && (
-                  <Badge className="mt-1.5 bg-[--attention]/15 text-[--attention]">
+                  <Badge className="mt-1.5 bg-attention/15 text-attention">
                     {MOTIVO[c.handoff.motivo] ?? c.handoff.motivo}
                   </Badge>
                 )}
@@ -622,14 +622,14 @@ function Historico() {
         </ul>
       </div>
 
-      <div className="rounded-xl border border-[--border]">
+      <div className="rounded-xl border border-border">
         {!atual ? (
           <p className="p-6 text-sm text-muted-foreground">
             Selecione uma conversa à esquerda.
           </p>
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[--border] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
               <div>
                 <h2 className="font-semibold">{atual.nome ?? atual.telefone}</h2>
                 <p className="font-mono text-xs text-muted-foreground">
@@ -653,8 +653,8 @@ function Historico() {
             </div>
 
             {atual.handoff && (
-              <div className="border-b border-[--border] p-3">
-                <p className="text-xs text-[--attention]">
+              <div className="border-b border-border p-3">
+                <p className="text-xs text-attention">
                   Escalou: {MOTIVO[atual.handoff.motivo] ?? atual.handoff.motivo}
                 </p>
                 <p className="mt-1 text-sm">{atual.handoff.resumo}</p>
@@ -685,7 +685,7 @@ function Historico() {
               ))}
             </div>
 
-            <div className="flex items-end gap-2 border-t border-[--border] p-3">
+            <div className="flex items-end gap-2 border-t border-border p-3">
               <Textarea
                 rows={2}
                 placeholder="Responder como você — a IA pausa nesta conversa."

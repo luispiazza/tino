@@ -426,11 +426,11 @@ export function DespesasClient() {
                   </TableCell>
                   <TableCell>
                     {l.estado === "pago" ? (
-                      <Badge className="bg-[--ok]/15 text-[--ok]">
+                      <Badge className="bg-ok/15 text-ok">
                         pago {dataBr(l.dataPagamento)}
                       </Badge>
                     ) : l.estado === "confirmado" ? (
-                      <Badge className="bg-[--attention]/15 text-[--attention]">
+                      <Badge className="bg-attention/15 text-attention">
                         confirmado
                       </Badge>
                     ) : (

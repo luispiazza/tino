@@ -64,6 +64,15 @@ body {
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
+  /*
+   * Os tokens de estado precisam virar cor de verdade do Tailwind.
+   * Escritos como `text-[--ok]` eles compilavam para `color: --ok`, que
+   * é CSS inválido — a declaração era descartada e a cor nunca aparecia.
+   * Registrados aqui, viram `text-ok`, `bg-ok/15`, `border-ok`.
+   */
+  --color-ok: var(--ok);
+  --color-attention: var(--attention);
+  --color-overdue: var(--overdue);
   /* paleta da vitrine — só resolve dentro de .vitrine */
   --color-fundo: var(--fundo);
   --color-papel: var(--papel);

@@ -54,7 +54,7 @@ export default async function PortalProdutor({
       />
 
       {reserva.comanda.horasExtras > 0 && (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-[--attention]">
+        <p className="rounded-lg border border-dashed p-4 text-sm text-attention">
           {reserva.comanda.horasExtras}h de hora extra além das{" "}
           {reserva.horaFim.slice(0, 5)}
           {reserva.comanda.horaExtraCents !== null &&

@@ -152,8 +152,8 @@ export function CalendarioMes({
                         className={cn(
                           "truncate rounded px-1 py-0.5 text-[11px] leading-tight",
                           r.status === "confirmada"
-                            ? "bg-[--ok]/15 text-[--ok]"
-                            : "bg-[--attention]/15 text-[--attention]"
+                            ? "bg-ok/15 text-ok"
+                            : "bg-attention/15 text-attention"
                         )}
                       >
                         <span className="font-mono font-medium">

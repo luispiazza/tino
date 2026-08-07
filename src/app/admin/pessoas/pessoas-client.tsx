@@ -207,7 +207,7 @@ export function PessoasClient() {
                   </TableCell>
                   <TableCell>
                     {p.ativo ? (
-                      <Badge className="bg-[--ok]/15 text-[--ok]">ativo</Badge>
+                      <Badge className="bg-ok/15 text-ok">ativo</Badge>
                     ) : (
                       <Badge variant="outline" className="text-muted-foreground">
                         inativo

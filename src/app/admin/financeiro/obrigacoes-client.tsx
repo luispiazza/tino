@@ -36,7 +36,7 @@ export function ObrigacoesClient() {
           <span
             className={cn(
               "w-20 shrink-0 tabular-nums",
-              i.atrasada ? "font-medium text-[--overdue]" : "text-muted-foreground"
+              i.atrasada ? "font-medium text-overdue" : "text-muted-foreground"
             )}
           >
             {dataBr(i.data)}
@@ -44,14 +44,14 @@ export function ObrigacoesClient() {
           <span
             className={cn(
               "shrink-0 font-mono text-xs",
-              i.tipo === "receber" ? "text-[--ok]" : "text-muted-foreground"
+              i.tipo === "receber" ? "text-ok" : "text-muted-foreground"
             )}
           >
             {i.tipo === "receber" ? "→ receber" : "← pagar"}
           </span>
           <span className="min-w-0 flex-1 truncate">{i.descricao}</span>
           {i.atrasada && (
-            <Badge className="bg-[--overdue]/15 text-[--overdue]">
+            <Badge className="bg-overdue/15 text-overdue">
               atrasada
             </Badge>
           )}

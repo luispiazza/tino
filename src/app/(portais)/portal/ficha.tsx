@@ -35,7 +35,7 @@ export function StatusReserva({
   status: ReservaDoPortal["status"];
 }) {
   if (status === "confirmada")
-    return <Badge className="bg-[--ok]/15 text-[--ok]">confirmada</Badge>;
+    return <Badge className="bg-ok/15 text-ok">confirmada</Badge>;
   if (status === "cancelada")
     return (
       <Badge variant="outline" className="text-muted-foreground">
@@ -43,7 +43,7 @@ export function StatusReserva({
       </Badge>
     );
   return (
-    <Badge className="bg-[--attention]/15 text-[--attention]">
+    <Badge className="bg-attention/15 text-attention">
       aguardando confirmação
     </Badge>
   );

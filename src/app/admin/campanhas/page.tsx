@@ -152,7 +152,7 @@ export default function CampanhasAdmin() {
                   }
                 />
               </div>
-              <p className="text-xs text-[--muted]">
+              <p className="text-xs text-muted-foreground">
                 Vídeo do hero e imagem OG entram por URL depois — o S3 chega
                 junto com o upload.
               </p>
@@ -195,21 +195,21 @@ export default function CampanhasAdmin() {
         {campanhas?.map((c) => (
           <article
             key={c.id}
-            className="rounded-xl border border-[--border] p-4"
+            className="rounded-xl border border-border p-4"
           >
             <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="font-semibold">{c.nome}</h2>
-              <span className="font-mono text-xs text-[--muted]">
+              <span className="font-mono text-xs text-muted-foreground">
                 /c/{c.slug}
               </span>
               {c.canal && (
-                <span className="text-xs text-[--muted]">{c.canal}</span>
+                <span className="text-xs text-muted-foreground">{c.canal}</span>
               )}
               {c.segmento && (
-                <span className="text-xs text-[--muted]">{c.segmento}</span>
+                <span className="text-xs text-muted-foreground">{c.segmento}</span>
               )}
               {!c.ativa && (
-                <span className="text-xs text-[--attention]">pausada</span>
+                <span className="text-xs text-attention">pausada</span>
               )}
               <Button
                 variant="ghost"
@@ -224,25 +224,25 @@ export default function CampanhasAdmin() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <section>
-                <h3 className="text-xs text-[--muted]">Hero da página</h3>
-                <div className="mt-2 flex aspect-video flex-col justify-end rounded-lg border border-[--border] bg-black/40 p-4">
+                <h3 className="text-xs text-muted-foreground">Hero da página</h3>
+                <div className="mt-2 flex aspect-video flex-col justify-end rounded-lg border border-border bg-black/40 p-4">
                   <p className="text-lg font-semibold">
                     {c.heroTitulo ?? "— sem título"}
                   </p>
-                  <p className="mt-1 text-sm text-[--muted]">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {c.heroSubtitulo ?? "— sem subtítulo"}
                   </p>
                 </div>
-                <p className="mt-1 text-xs text-[--muted]">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {c.heroVideoUrl ? "vídeo de fundo: ok" : "vídeo de fundo: faltando"}
                 </p>
               </section>
 
               <section>
-                <h3 className="text-xs text-[--muted]">
+                <h3 className="text-xs text-muted-foreground">
                   Preview do link (WhatsApp)
                 </h3>
-                <div className="mt-2 overflow-hidden rounded-lg border border-[--border]">
+                <div className="mt-2 overflow-hidden rounded-lg border border-border">
                   {c.ogImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -251,7 +251,7 @@ export default function CampanhasAdmin() {
                       className="aspect-[1200/630] w-full object-cover"
                     />
                   ) : (
-                    <div className="flex aspect-[1200/630] items-center justify-center bg-black/40 text-xs text-[--muted]">
+                    <div className="flex aspect-[1200/630] items-center justify-center bg-black/40 text-xs text-muted-foreground">
                       imagem OG faltando
                     </div>
                   )}
@@ -259,10 +259,10 @@ export default function CampanhasAdmin() {
                     <p className="text-sm font-semibold">
                       {c.ogTitulo ?? "— sem título OG"}
                     </p>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-[--muted]">
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                       {c.ogDescricao ?? "— sem descrição OG"}
                     </p>
-                    <p className="mt-1 text-xs text-[--muted]">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       tinoestudio.com.br
                     </p>
                   </div>

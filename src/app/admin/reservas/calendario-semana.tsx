@@ -138,8 +138,8 @@ export function CalendarioSemana({
                       className={cn(
                         "rounded px-1.5 py-1 text-[11px] leading-tight",
                         r.status === "confirmada"
-                          ? "bg-[--ok]/15 text-[--ok]"
-                          : "bg-[--attention]/15 text-[--attention]"
+                          ? "bg-ok/15 text-ok"
+                          : "bg-attention/15 text-attention"
                       )}
                     >
                       <div className="font-mono font-medium">

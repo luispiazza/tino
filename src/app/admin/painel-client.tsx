@@ -139,7 +139,7 @@ export function PainelClient() {
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-medium">Precisa de você</h2>
             {precisaDeVoce > 0 && (
-              <span className="font-mono text-sm tabular-nums text-[--attention]">
+              <span className="font-mono text-sm tabular-nums text-attention">
                 {precisaDeVoce}
               </span>
             )}

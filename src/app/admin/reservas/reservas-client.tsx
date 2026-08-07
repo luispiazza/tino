@@ -35,7 +35,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Cabecalho } from "@/components/viz/secao";
+import { Cabecalho, Vazio } from "@/components/viz/secao";
 import { CalendarioAno } from "./calendario-ano";
 import { CalendarioMes } from "./calendario-mes";
 import { CalendarioSemana } from "./calendario-semana";
@@ -58,6 +58,59 @@ const formVazio = {
   codigoMontagem: "",
 };
 
+/* o filtro da lista: o que o sócio pergunta ao abrir a tela */
+const PERIODOS = [
+  { valor: "todos", rotulo: "Todos" },
+  { valor: "hoje", rotulo: "Hoje" },
+  { valor: "semana", rotulo: "Esta semana" },
+  { valor: "mes", rotulo: "Este mês" },
+] as const;
+type Periodo = (typeof PERIODOS)[number]["valor"];
+
+/* hoje em São Paulo, no formato do banco — o servidor pode estar em UTC */
+function hojeIso() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+}
+
+/*
+ * Cor é informação, nunca decoração (PRODUCT §Princípios): verde é em
+ * dia, âmbar pede ação, vermelho saiu da agenda. A legenda existe para
+ * a cor não ser a única portadora do significado.
+ */
+const STATUS = {
+  confirmada: {
+    rotulo: "Confirmada",
+    badge: "bg-ok/15 text-ok",
+    ponto: "bg-ok",
+  },
+  pendente: {
+    rotulo: "Pendente",
+    badge: "bg-attention/15 text-attention",
+    ponto: "bg-attention",
+  },
+  cancelada: {
+    rotulo: "Cancelada",
+    badge: "bg-overdue/15 text-overdue",
+    ponto: "bg-overdue",
+  },
+} as const;
+
+function Legenda() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <span>Status:</span>
+      {Object.entries(STATUS).map(([chave, s]) => (
+        <span key={chave} className="flex items-center gap-1.5">
+          <span aria-hidden className={`size-2 rounded-full ${s.ponto}`} />
+          {s.rotulo}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
 const horaCurta = (h: string) => h.slice(0, 5);
 const brl = (cents: number) =>
@@ -79,6 +132,7 @@ export function ReservasClient() {
   const [aberto, setAberto] = useState(false);
   const [detalheId, setDetalheId] = useState<number | null>(null);
   const [form, setForm] = useState(formVazio);
+  const [periodo, setPeriodo] = useState<Periodo>("todos");
 
   const formCompleto =
     form.dataInicio !== "" &&
@@ -148,6 +202,34 @@ export function ReservasClient() {
   const ativas = (reservas.data ?? []).filter((r) => r.status !== "cancelada");
   const aguardando = ativas.filter((r) => r.status === "pendente").length;
   const semEnvio = ativas.filter((r) => !r.whatsappEnviadoEm).length;
+  /*
+   * A reserva ocupa um intervalo: ela entra no período se houver
+   * qualquer sobreposição, não só se começar dentro dele — senão uma
+   * diária de três dias some do filtro no segundo dia.
+   */
+  const visiveis = (() => {
+    const lista = reservas.data ?? [];
+    if (periodo === "todos") return lista;
+    const hoje = hojeIso();
+    let inicio = hoje;
+    let fim = hoje;
+    if (periodo === "semana") {
+      const d = new Date(`${hoje}T12:00:00Z`);
+      const diaSemana = (d.getUTCDay() + 6) % 7; /* segunda = 0 */
+      const seg = new Date(d);
+      seg.setUTCDate(d.getUTCDate() - diaSemana);
+      const dom = new Date(seg);
+      dom.setUTCDate(seg.getUTCDate() + 6);
+      inicio = seg.toISOString().slice(0, 10);
+      fim = dom.toISOString().slice(0, 10);
+    } else if (periodo === "mes") {
+      inicio = `${hoje.slice(0, 7)}-01`;
+      const [a, m] = hoje.split("-").map(Number);
+      fim = `${hoje.slice(0, 7)}-${String(new Date(a, m, 0).getDate()).padStart(2, "0")}`;
+    }
+    return lista.filter((r) => r.dataInicio <= fim && r.dataFim >= inicio);
+  })();
+
   const resumo = reservas.data
     ? [
         `${ativas.length} ${ativas.length === 1 ? "reserva" : "reservas"}`,
@@ -389,8 +471,8 @@ export function ReservasClient() {
                   role="status"
                   className={
                     disponibilidade.data.disponivel
-                      ? "text-sm text-[--ok]"
-                      : "text-sm text-[--attention]"
+                      ? "text-sm text-ok"
+                      : "text-sm text-attention"
                   }
                 >
                   {disponibilidade.data.disponivel
@@ -414,12 +496,17 @@ export function ReservasClient() {
         </Dialog>
       </Cabecalho>
 
+      {/*
+       * O calendário mostra quando; a lista mostra o quê. Antes eram
+       * abas irmãs, então ver a agenda do mês e conferir o valor de uma
+       * reserva exigia trocar de aba e voltar. A lista passa a viver
+       * embaixo de qualquer visualização.
+       */}
       <Tabs defaultValue="mes">
         <TabsList>
           <TabsTrigger value="semana">Semana</TabsTrigger>
           <TabsTrigger value="mes">Mês</TabsTrigger>
           <TabsTrigger value="ano">Ano</TabsTrigger>
-          <TabsTrigger value="lista">Lista</TabsTrigger>
         </TabsList>
 
         <TabsContent value="semana" className="mt-3">
@@ -442,17 +529,48 @@ export function ReservasClient() {
             totalEstudios={(estudios.data ?? []).length}
           />
         </TabsContent>
+      </Tabs>
 
-        <TabsContent value="lista" className="mt-3">
-          {reservas.data?.length === 0 ? (
-            <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-              Nenhuma reserva ainda. A primeira agenda nasce aqui.
-            </p>
+      <Legenda />
+
+      {/* A lista, sempre visível */}
+      <div className="flex flex-col gap-3 border-t pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {PERIODOS.map((p) => (
+              <button
+                key={p.valor}
+                type="button"
+                aria-pressed={periodo === p.valor}
+                onClick={() => setPeriodo(p.valor)}
+                className={`min-h-9 rounded-md px-3 text-sm transition-colors ${
+                  periodo === p.valor
+                    ? "bg-accent font-medium text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                }`}
+              >
+                {p.rotulo}
+              </button>
+            ))}
+          </div>
+          <span className="font-mono text-sm text-muted-foreground tabular-nums">
+            {visiveis.length}{" "}
+            {visiveis.length === 1 ? "reserva" : "reservas"}
+          </span>
+        </div>
+
+        <div>
+          {visiveis.length === 0 ? (
+            <Vazio>
+              {reservas.data?.length === 0
+                ? "Nenhuma reserva ainda. A primeira agenda nasce aqui."
+                : "Nenhuma reserva neste período."}
+            </Vazio>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="hover:bg-transparent">
                     <TableHead>Código</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Data</TableHead>
@@ -464,10 +582,14 @@ export function ReservasClient() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(reservas.data ?? []).map((r) => (
+                  {visiveis.map((r) => (
                     <TableRow
                       key={r.id}
-                      className="cursor-pointer"
+                      /* cancelada continua na lista, mas recua: é
+                         histórico, não agenda */
+                      className={`cursor-pointer ${
+                        r.status === "cancelada" ? "opacity-55" : ""
+                      }`}
                       onClick={() => setDetalheId(r.id)}
                     >
                       <TableCell className="font-mono font-medium">
@@ -499,28 +621,16 @@ export function ReservasClient() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {r.status === "confirmada" && (
-                          <Badge className="bg-[--ok]/15 text-[--ok]">
-                            confirmada
-                          </Badge>
-                        )}
-                        {r.status === "pendente" && (
-                          <Badge className="bg-[--attention]/15 text-[--attention]">
-                            pendente
-                          </Badge>
-                        )}
-                        {r.status === "cancelada" && (
-                          <Badge
-                            variant="outline"
-                            className="text-muted-foreground"
-                          >
-                            cancelada
-                          </Badge>
-                        )}
+                        {(() => {
+                          const s = STATUS[r.status as keyof typeof STATUS];
+                          return s ? (
+                            <Badge className={s.badge}>{s.rotulo}</Badge>
+                          ) : null;
+                        })()}
                       </TableCell>
                       <TableCell>
                         {r.whatsappEnviadoEm ? (
-                          <Badge className="bg-[--ok]/15 text-[--ok]">
+                          <Badge className="bg-ok/15 text-ok">
                             enviada{" "}
                             {new Date(r.whatsappEnviadoEm).toLocaleDateString(
                               "pt-BR",
@@ -542,8 +652,8 @@ export function ReservasClient() {
               </Table>
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       <DetalheReserva
         reservaId={detalheId}

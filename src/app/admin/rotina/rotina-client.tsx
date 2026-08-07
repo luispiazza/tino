@@ -209,7 +209,7 @@ export function RotinaClient() {
                   </TableCell>
                   <TableCell>
                     {t.ativo ? (
-                      <Badge className="bg-[--ok]/15 text-[--ok]">ativa</Badge>
+                      <Badge className="bg-ok/15 text-ok">ativa</Badge>
                     ) : (
                       <Badge variant="outline" className="text-muted-foreground">
                         pausada

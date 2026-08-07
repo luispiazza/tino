@@ -56,7 +56,7 @@ const AVANCO: Record<string, { para: string; rotulo: string } | undefined> = {
 
 function BadgeEstado({ estado }: { estado: string }) {
   if (estado === "paga" || estado === "nf_emitida" || estado === "conciliada")
-    return <Badge className="bg-[--ok]/15 text-[--ok]">{ROTULO[estado]}</Badge>;
+    return <Badge className="bg-ok/15 text-ok">{ROTULO[estado]}</Badge>;
   if (estado === "cancelada")
     return (
       <Badge variant="outline" className="text-muted-foreground">
@@ -64,7 +64,7 @@ function BadgeEstado({ estado }: { estado: string }) {
       </Badge>
     );
   return (
-    <Badge className="bg-[--attention]/15 text-[--attention]">
+    <Badge className="bg-attention/15 text-attention">
       {ROTULO[estado]}
     </Badge>
   );

@@ -74,7 +74,7 @@ export function ResultadosClient() {
                 <td
                   className={cn(
                     "px-3 py-2.5 text-right tabular-nums",
-                    l.reservas > 0 && "text-[--ok]"
+                    l.reservas > 0 && "text-ok"
                   )}
                 >
                   {l.reservas}

@@ -81,7 +81,7 @@ export default function TelaDoDia() {
               </p>
             </div>
             {r.status === "pendente" && (
-              <Badge className="bg-[--attention]/15 text-[--attention]">
+              <Badge className="bg-attention/15 text-attention">
                 pendente
               </Badge>
             )}
@@ -142,7 +142,7 @@ export default function TelaDoDia() {
                 <p className="text-xs text-muted-foreground">
                   {t.estudioId ? `Estúdio ${codigo(t.estudioId)}` : "Geral"}
                   {t.ehArrasto && (
-                    <span className="ml-2 text-[--attention]">
+                    <span className="ml-2 text-attention">
                       pendente desde {t.dataOriginal}
                     </span>
                   )}
