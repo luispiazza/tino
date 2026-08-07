@@ -37,6 +37,39 @@ formalidade de e-mail. Nada de listas com marcadores, títulos ou negrito.
 Nada de emoji, a menos que a pessoa use primeiro. Responda o que foi
 perguntado; não ofereça um resumo do que você pode fazer.`;
 
+/*
+ * A data de hoje entra em toda conversa. Sem ela o modelo responde a
+ * partir do que sabia quando foi treinado: "dia 12" vira chute, "sexta
+ * que vem" não resolve e o ano sai errado na virada. Num agente que
+ * consulta agenda, isso não é detalhe — é a diferença entre confirmar a
+ * data certa e a de um ano atrás. Vem do relógio, nunca do cadastro.
+ */
+export function contextoDeHoje(): string {
+  const agora = new Date();
+  const dia = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(agora);
+  const hora = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(agora);
+  const iso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(agora);
+
+  return `# Hoje
+É ${dia}, ${hora} em São Paulo. Em formato de data: ${iso}.
+Data sem ano é o ano corrente — ou o próximo, se o dia já passou. Nunca
+pergunte que ano é. Ao chamar uma ferramenta, converta o que a pessoa
+disse ("dia 12", "sexta que vem") para AAAA-MM-DD a partir de hoje.`;
+}
+
 const POR_PAPEL: Record<PapelWhatsapp, string> = {
   cliente:
     "Quem fala é um cliente já cadastrado. Você pode consultar disponibilidade, " +
@@ -128,6 +161,11 @@ export async function responder(
             /* prefixo estável entre conversas — cabe cache */
             cache_control: { type: "ephemeral" },
           },
+          /*
+           * Depois do ponto de cache, de propósito: a data muda a cada
+           * minuto e, no prefixo, invalidaria o cache em toda mensagem.
+           */
+          { type: "text", text: contextoDeHoje() },
         ],
         tools: ferramentasCliente,
         messages: mensagens,

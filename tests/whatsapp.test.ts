@@ -14,6 +14,7 @@ import {
 import type { DB } from "@/server/db";
 import { chaveTelefone, formatarTelefone, paraEnvio } from "@/server/whatsapp/telefone";
 import { resolverIdentidade } from "@/server/whatsapp/identidade";
+import { contextoDeHoje } from "@/server/whatsapp/agente";
 import { montarConhecimento } from "@/server/whatsapp/conhecimento";
 import { atender, garantirConfig } from "@/server/whatsapp/atendimento";
 import { executarFerramenta } from "@/server/whatsapp/ferramentas";
@@ -58,6 +59,20 @@ describe("telefone — a chave que faz a identidade funcionar", () => {
     expect(formatarTelefone("5511999350085")).toBe("(11) 99935-0085");
     expect(paraEnvio("(11) 99935-0085")).toBe("5511999350085");
     expect(paraEnvio("5511999350085")).toBe("5511999350085");
+  });
+});
+
+describe("o agente sempre sabe que dia é hoje", () => {
+  it("injeta a data de São Paulo em AAAA-MM-DD, não a do servidor em UTC", () => {
+    const texto = contextoDeHoje();
+    const hojeSP = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date());
+
+    expect(texto).toContain(hojeSP);
+    /* sem isto, "dia 12" e "sexta que vem" viram chute do modelo */
+    expect(texto).toContain("AAAA-MM-DD");
+    expect(texto).toMatch(/\d{2}:\d{2}/);
   });
 });
 
