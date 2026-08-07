@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Cabecalho } from "@/components/viz/secao";
 
 const NATUREZAS: { valor: string; rotulo: string }[] = [
   { valor: "funcionario", rotulo: "Funcionário" },
@@ -77,21 +78,20 @@ export function PessoasClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Pessoas</h1>
-          {lista.data && (
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {lista.data.length === 0
-                ? "ninguém cadastrado"
-                : `${lista.data.filter((p) => p.ativo).length} ${
-                    lista.data.filter((p) => p.ativo).length === 1
-                      ? "pessoa ativa"
-                      : "pessoas ativas"
-                  }`}
-            </p>
-          )}
-        </div>
+      <Cabecalho
+        titulo="Pessoas"
+        resumo={
+          lista.data
+            ? lista.data.length === 0
+              ? "ninguém cadastrado"
+              : `${lista.data.filter((p) => p.ativo).length} ${
+                  lista.data.filter((p) => p.ativo).length === 1
+                    ? "pessoa ativa"
+                    : "pessoas ativas"
+                }`
+            : undefined
+        }
+      >
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger
             render={
@@ -174,7 +174,7 @@ export function PessoasClient() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      </Cabecalho>
 
       {lista.data?.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

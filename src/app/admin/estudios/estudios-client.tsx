@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Cabecalho } from "@/components/viz/secao";
 
 type Estudio = {
   id: number;
@@ -105,20 +106,21 @@ export function EstudiosClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Estúdios</h1>
-          {lista.data && lista.data.length > 0 && (
-            <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
+      <Cabecalho
+        titulo="Estúdios"
+        resumo={
+          lista.data && lista.data.length > 0 ? (
+            <span className="tabular-nums">
               {lista.data.filter((e) => !e.ehComplementar).length} principais ·{" "}
               {lista.data.filter((e) => e.ehComplementar).length} complementares
               {(() => {
                 const semFicha = lista.data.filter((e) => !e.fichaTecnica).length;
                 return semFicha > 0 ? ` · ${semFicha} sem ficha técnica` : "";
               })()}
-            </p>
-          )}
-        </div>
+            </span>
+          ) : undefined
+        }
+      >
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger render={<Button onClick={abrirNovo} />}>
             Cadastrar estúdio
@@ -261,7 +263,7 @@ export function EstudiosClient() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      </Cabecalho>
 
       {lista.data?.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

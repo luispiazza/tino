@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatarHoras } from "@/server/escala/jornada";
-import { Numero, Secao } from "@/components/viz/secao";
+import { Cabecalho, Numero, Secao } from "@/components/viz/secao";
 import { cn } from "@/lib/utils";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -94,24 +94,21 @@ export function EscalaClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Escala</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {(() => {
-              const t = semana.data?.turnos ?? [];
-              const descobertos = t.filter((x) => x.descoberto).length;
-              if (!semana.data) return "";
-              if (t.length === 0) return "nenhum turno nesta semana";
-              return [
-                `${t.length} ${t.length === 1 ? "turno" : "turnos"}`,
-                descobertos > 0 && `${descobertos} sem ocupante`,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-            })()}
-          </p>
-        </div>
+      <Cabecalho
+        titulo="Escala"
+        resumo={(() => {
+          const t = semana.data?.turnos ?? [];
+          const descobertos = t.filter((x) => x.descoberto).length;
+          if (!semana.data) return "";
+          if (t.length === 0) return "nenhum turno nesta semana";
+          return [
+            `${t.length} ${t.length === 1 ? "turno" : "turnos"}`,
+            descobertos > 0 && `${descobertos} sem ocupante`,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        })()}
+      >
         <div className="flex gap-1">
           <Button variant="outline" size="sm" aria-label="Semana anterior" onClick={() => navegar(-7)}>
             ←
@@ -131,7 +128,7 @@ export function EscalaClient() {
             →
           </Button>
         </div>
-      </div>
+      </Cabecalho>
 
       {custo.data && custo.data.totalCents > 0 && (
         <Secao className="py-4">

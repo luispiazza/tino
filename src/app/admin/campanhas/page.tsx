@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Cabecalho, Secao, Vazio } from "@/components/viz/secao";
 import { ResultadosClient } from "./resultados-client";
+import { Pagina } from "../pagina";
 
 /*
  * Campanhas — lista com preview do que está gravado em cada landing:
@@ -51,17 +53,19 @@ export default function CampanhasAdmin() {
   });
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <div className="mb-3">
-        <h1 className="text-xl font-semibold">Resultados</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          de onde vêm os contatos e o que vira reserva
-        </p>
-      </div>
-      <ResultadosClient />
-
-      <div className="mt-10 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Campanhas</h2>
+    <Pagina>
+      {/* a tela é Campanhas; Resultados é seção dela. Dois títulos de
+          nível de página competiam pelo mesmo lugar na hierarquia */}
+      <Cabecalho
+        titulo="Campanhas"
+        resumo={
+          campanhas
+            ? campanhas.length === 0
+              ? "nenhuma campanha cadastrada"
+              : `${campanhas.length} ${campanhas.length === 1 ? "campanha" : "campanhas"}`
+            : undefined
+        }
+      >
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger render={<Button />}>Nova campanha</DialogTrigger>
           <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-md">
@@ -173,14 +177,21 @@ export default function CampanhasAdmin() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      </Cabecalho>
 
-      {isLoading && <p className="mt-4 text-[--muted]">Carregando…</p>}
+      <Secao titulo="Resultados">
+        <ResultadosClient />
+      </Secao>
+
+      {isLoading && <p className="text-muted-foreground">Carregando…</p>}
       {campanhas?.length === 0 && (
-        <p className="mt-4 text-[--muted]">Nenhuma campanha cadastrada.</p>
+        <Vazio>
+          Nenhuma campanha ainda. Cada campanha ganha uma URL /c/slug com hero
+          próprio, e o funil acima passa a separar o que veio dela.
+        </Vazio>
       )}
 
-      <div className="mt-6 grid gap-6">
+      <div className="grid gap-6">
         {campanhas?.map((c) => (
           <article
             key={c.id}
@@ -261,6 +272,6 @@ export default function CampanhasAdmin() {
           </article>
         ))}
       </div>
-    </main>
+    </Pagina>
   );
 }

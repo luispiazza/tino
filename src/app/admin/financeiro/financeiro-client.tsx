@@ -2,7 +2,7 @@
 
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
-import { Numero, Secao } from "@/components/viz/secao";
+import { Cabecalho, Numero, Secao } from "@/components/viz/secao";
 import { VIZ } from "@/components/viz/tokens";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,20 +126,18 @@ function ResumoFinanceiro() {
   const contasAtrasadas = itens.filter((i) => i.atrasada).length;
 
   return (
-    <Secao className="flex flex-wrap items-end justify-between gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Financeiro</h1>
-        {caixa.data?.configurado ? (
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            saldo desde a virada de {caixa.data.dataVirada.split("-").reverse().join("/")}
-          </p>
-        ) : (
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            informe o saldo da virada na aba Caixa
-          </p>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-8">
+    /* o título sai de dentro do card e sobe para o mesmo lugar que ele
+       ocupa no Painel e em Reservas — o card fica só com os números */
+    <div className="flex flex-col gap-4">
+      <Cabecalho
+        titulo="Financeiro"
+        resumo={
+          caixa.data?.configurado
+            ? `saldo desde a virada de ${caixa.data.dataVirada.split("-").reverse().join("/")}`
+            : "informe o saldo da virada na aba Caixa"
+        }
+      />
+      <Secao className="flex flex-wrap gap-x-8 gap-y-4">
         {caixa.data?.configurado && (
           <Numero
             rotulo="em caixa hoje"
@@ -165,8 +163,8 @@ function ResumoFinanceiro() {
               : undefined
           }
         />
-      </div>
-    </Secao>
+      </Secao>
+    </div>
   );
 }
 

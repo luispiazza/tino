@@ -1,4 +1,5 @@
 import { OcupacaoClient } from "./ocupacao-client";
+import { Pagina } from "../pagina";
 
 /*
  * Domínio 8 — a pergunta que o negócio não conseguia responder:
@@ -6,8 +7,8 @@ import { OcupacaoClient } from "./ocupacao-client";
  */
 export default function RelatoriosPage() {
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6">
+    <Pagina>
       <OcupacaoClient />
-    </main>
+    </Pagina>
   );
 }

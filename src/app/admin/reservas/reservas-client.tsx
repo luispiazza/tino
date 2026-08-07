@@ -35,6 +35,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Cabecalho } from "@/components/viz/secao";
 import { CalendarioAno } from "./calendario-ano";
 import { CalendarioMes } from "./calendario-mes";
 import { CalendarioSemana } from "./calendario-semana";
@@ -159,13 +160,7 @@ export function ReservasClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Reservas</h1>
-          {resumo && (
-            <p className="mt-0.5 text-sm text-muted-foreground">{resumo}</p>
-          )}
-        </div>
+      <Cabecalho titulo="Reservas" resumo={resumo}>
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger render={<Button />}>Nova reserva</DialogTrigger>
           <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-md">
@@ -417,7 +412,7 @@ export function ReservasClient() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      </Cabecalho>
 
       <Tabs defaultValue="mes">
         <TabsList>

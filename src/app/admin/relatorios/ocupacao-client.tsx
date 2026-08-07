@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { BarrasHorizontais } from "@/components/viz/barras";
 import { TiraDoMes } from "@/components/viz/tira-do-mes";
+import { Cabecalho } from "@/components/viz/secao";
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", {
@@ -45,34 +46,31 @@ export function OcupacaoClient() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Ocupação</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Mês anterior"
-            onClick={() =>
-              mes === 1 ? (setAno(ano - 1), setMes(12)) : setMes(mes - 1)
-            }
-          >
-            ←
-          </Button>
-          <span className="min-w-36 text-center text-sm font-medium">
-            <span className="capitalize">{MESES[mes - 1]}</span> de {ano}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Próximo mês"
-            onClick={() =>
-              mes === 12 ? (setAno(ano + 1), setMes(1)) : setMes(mes + 1)
-            }
-          >
-            →
-          </Button>
-        </div>
-      </div>
+      <Cabecalho titulo="Ocupação" resumo="quanto cada estúdio rodou no mês">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label="Mês anterior"
+          onClick={() =>
+            mes === 1 ? (setAno(ano - 1), setMes(12)) : setMes(mes - 1)
+          }
+        >
+          ←
+        </Button>
+        <span className="min-w-36 text-center text-sm font-medium">
+          <span className="capitalize">{MESES[mes - 1]}</span> de {ano}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label="Próximo mês"
+          onClick={() =>
+            mes === 12 ? (setAno(ano + 1), setMes(1)) : setMes(mes + 1)
+          }
+        >
+          →
+        </Button>
+      </Cabecalho>
 
       {dados && (
         <section className="rounded-xl border bg-card p-5">

@@ -29,6 +29,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { InventarioClient } from "./inventario-client";
+import { Cabecalho } from "@/components/viz/secao";
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -62,10 +63,7 @@ export function RentalClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Rental</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">{resumo}</p>
-      </div>
+      <Cabecalho titulo="Rental" resumo={resumo} />
       <Tabs defaultValue="catalogo">
         <TabsList>
           <TabsTrigger value="catalogo">Catálogo</TabsTrigger>

@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Cabecalho } from "@/components/viz/secao";
 
 const MODOS = [
   { valor: "ambos", rotulo: "todo dia" },
@@ -76,8 +77,10 @@ export function RotinaClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Rotina</h1>
+      <Cabecalho
+        titulo="Rotina"
+        resumo="as regras que o gerador de tarefas lê todo dia"
+      >
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger render={<Button />}>Nova regra</DialogTrigger>
           <DialogContent className="sm:max-w-sm">
@@ -169,7 +172,7 @@ export function RotinaClient() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      </Cabecalho>
 
       {lista.data?.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

@@ -2,6 +2,8 @@
 
 import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
+import { Cabecalho, Vazio } from "@/components/viz/secao";
+import { Pagina } from "../pagina";
 
 /*
  * A tela do dia — a mesma para funcionário, sócio ou parceiro.
@@ -14,12 +16,21 @@ export default function TelaDoDia() {
   const agenda = trpc.reservas.agendaDoDia.useQuery();
   const estudios = trpc.estudios.listar.useQuery();
   const { data: tarefas, isLoading } = trpc.escala.timelineDoDia.useQuery({});
-  const concluir = trpc.escala.concluirTarefa.useMutation();
+
+  /*
+   * Marcar como feita precisa recarregar a lista: sem isso o Michael
+   * toca em "Feito", nada muda na tela e ele toca de novo.
+   */
+  const utils = trpc.useUtils();
+  const concluir = trpc.escala.concluirTarefa.useMutation({
+    onSuccess: () => utils.escala.timelineDoDia.invalidate(),
+  });
 
   const porId = new Map((estudios.data ?? []).map((e) => [e.id, e.codigo]));
   const codigo = (id: number) => porId.get(id) ?? String(id);
   const hoje = agenda.data?.hoje ?? [];
   const amanha = agenda.data?.amanha ?? [];
+  const pendentes = (tarefas ?? []).filter((t) => t.estado === "pendente").length;
 
   const dataHoje = new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -29,16 +40,20 @@ export default function TelaDoDia() {
   }).format(new Date());
 
   return (
-    <main className="mx-auto max-w-2xl p-4 sm:p-6">
-      <h1 className="text-xl font-semibold">Hoje</h1>
-      <p className="mt-0.5 text-sm text-muted-foreground first-letter:uppercase">
-        {dataHoje}
-        {hoje.length > 0 &&
-          ` · ${hoje.length} ${hoje.length === 1 ? "shooting" : "shootings"}`}
-      </p>
+    <Pagina>
+      <Cabecalho
+        titulo="Hoje"
+        resumo={
+          <span className="first-letter:uppercase">
+            {dataHoje}
+            {hoje.length > 0 &&
+              ` · ${hoje.length} ${hoje.length === 1 ? "shooting" : "shootings"}`}
+          </span>
+        }
+      />
 
       {/* Shootings de hoje */}
-      <section className="mt-4 flex flex-col gap-2">
+      <section className="flex flex-col gap-2">
         {agenda.isLoading && (
           <p className="text-sm text-muted-foreground">Carregando agenda…</p>
         )}
@@ -96,17 +111,18 @@ export default function TelaDoDia() {
       </section>
 
       {/* Timeline de tarefas — o gerador determinístico chega na Fase 4 */}
-      <h2 className="mt-8 text-sm font-medium text-muted-foreground">
-        Tarefas do dia
-      </h2>
+      <div className="mt-4 flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-medium">Tarefas do dia</h2>
+        {pendentes > 0 && (
+          <span className="font-mono text-sm tabular-nums text-muted-foreground">
+            {pendentes} {pendentes === 1 ? "pendente" : "pendentes"}
+          </span>
+        )}
+      </div>
       {isLoading && (
         <p className="mt-2 text-sm text-muted-foreground">Carregando…</p>
       )}
-      {tarefas?.length === 0 && (
-        <p className="mt-2 rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-          Nada gerado para hoje.
-        </p>
-      )}
+      {tarefas?.length === 0 && <Vazio>Nada gerado para hoje.</Vazio>}
       <ol className="mt-3 border-l">
         {tarefas?.map((t) => (
           <li key={t.id} className="relative mb-2 pl-6">
@@ -133,17 +149,23 @@ export default function TelaDoDia() {
                 </p>
               </div>
               {t.estado === "pendente" && (
+                /* alvo largo e resposta imediata: a mão que toca isso às
+                   06:00 costuma estar ocupada, e tocar duas vezes por
+                   falta de retorno é o erro que a tela precisa evitar */
                 <button
                   onClick={() => concluir.mutate({ tarefaId: t.id })}
-                  className="min-h-11 min-w-11 shrink-0 rounded-lg border px-4 text-sm"
+                  disabled={concluir.isPending}
+                  className="min-h-11 shrink-0 rounded-lg border px-5 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
                 >
-                  Feito
+                  {concluir.isPending && concluir.variables?.tarefaId === t.id
+                    ? "…"
+                    : "Feito"}
                 </button>
               )}
             </div>
           </li>
         ))}
       </ol>
-    </main>
+    </Pagina>
   );
 }

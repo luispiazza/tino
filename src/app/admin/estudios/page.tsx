@@ -1,4 +1,5 @@
 import { EstudiosClient } from "./estudios-client";
+import { Pagina } from "../pagina";
 
 /*
  * Cadastro de estúdios — Domínio 1. A ficha técnica é o maior ativo da
@@ -6,8 +7,8 @@ import { EstudiosClient } from "./estudios-client";
  */
 export default function EstudiosPage() {
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6">
+    <Pagina>
       <EstudiosClient />
-    </main>
+    </Pagina>
   );
 }

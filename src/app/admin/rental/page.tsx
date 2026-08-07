@@ -1,4 +1,5 @@
 import { RentalClient } from "./rental-client";
+import { Pagina } from "../pagina";
 
 /*
  * Tino Rental — catálogo único de itens. Preço é coisa de sócio;
@@ -6,8 +7,8 @@ import { RentalClient } from "./rental-client";
  */
 export default function RentalPage() {
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6">
+    <Pagina>
       <RentalClient />
-    </main>
+    </Pagina>
   );
 }

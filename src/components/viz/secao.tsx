@@ -76,7 +76,9 @@ export function Numero({
       </span>
       <span
         className={cn(
-          "font-mono tabular-nums",
+          /* nunca quebrar entre o R$ e o número: no celular a coluna é
+             estreita e "R$" sozinho numa linha lê como outro dado */
+          "font-mono whitespace-nowrap tabular-nums",
           tamanho === "lg" ? "text-3xl leading-none" : "text-lg sm:text-xl"
         )}
         style={cor ? { color: cor } : undefined}

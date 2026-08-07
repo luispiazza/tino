@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Cabecalho, Vazio } from "@/components/viz/secao";
 
 const ROTULOS: Record<string, string> = {
   criar: "criou",
@@ -25,18 +26,18 @@ export function AuditoriaClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Auditoria</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {lista.data && lista.data.length > 0
+      <Cabecalho
+        titulo="Auditoria"
+        resumo={
+          lista.data && lista.data.length > 0
             ? `${lista.data.length} ${lista.data.length === 1 ? "registro" : "registros"} · mais recentes primeiro`
-            : "toda alteração de cadastro, valor e estado fica registrada aqui"}
-        </p>
-      </div>
+            : "toda alteração de cadastro, valor e estado fica registrada aqui"
+        }
+      />
       {lista.data?.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <Vazio>
           Nenhum registro ainda. Toda alteração passa a ficar registrada aqui.
-        </p>
+        </Vazio>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>

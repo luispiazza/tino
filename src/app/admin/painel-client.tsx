@@ -6,7 +6,7 @@ import { TiraDoMes } from "@/components/viz/tira-do-mes";
 import { BarrasHorizontais } from "@/components/viz/barras";
 import { LinhaSaldo } from "@/components/viz/linha-saldo";
 import { VIZ } from "@/components/viz/tokens";
-import { Numero } from "@/components/viz/secao";
+import { Cabecalho, Numero } from "@/components/viz/secao";
 import { cn } from "@/lib/utils";
 
 const brl = (cents: number) =>
@@ -71,6 +71,15 @@ export function PainelClient() {
 
   return (
     <div className="flex flex-col gap-5">
+      <Cabecalho
+        titulo="Painel"
+        resumo={
+          precisaDeVoce > 0
+            ? `${precisaDeVoce} ${precisaDeVoce === 1 ? "item pede" : "itens pedem"} decisão hoje`
+            : "Nada pedindo decisão hoje"
+        }
+      />
+
       {/* A tira do mês — a folha de contato do negócio */}
       <section className="rounded-xl border bg-card p-5">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
@@ -86,7 +95,9 @@ export function PainelClient() {
               dias com produção · {Math.round(taxaMes * 100)}% do mês
             </p>
           </div>
-          <div className="flex gap-6">
+          {/* grade em vez de fila: no celular três números lado a lado
+              espremem o valor até ele quebrar em duas linhas */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:flex sm:gap-6">
             <Numero
               rotulo="a receber"
               valor={brl(aReceber)}
@@ -120,7 +131,9 @@ export function PainelClient() {
         )}
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {/* xl e não lg: a sidebar come 15rem, então em 1024 duas colunas
+          deixariam os gráficos com ~380px e o dado ilegível */}
+      <div className="grid gap-5 xl:grid-cols-2">
         {/* Precisa de você — a coluna de decisão */}
         <section className="rounded-xl border bg-card p-5">
           <div className="mb-3 flex items-baseline justify-between">

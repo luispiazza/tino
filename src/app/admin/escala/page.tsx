@@ -1,4 +1,5 @@
 import { EscalaClient } from "./escala-client";
+import { Pagina } from "../pagina";
 
 /*
  * Domínio 2 — a escala. Turno é vaga com data e jornada; quem ocupa
@@ -6,8 +7,8 @@ import { EscalaClient } from "./escala-client";
  */
 export default function EscalaPage() {
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6">
+    <Pagina>
       <EscalaClient />
-    </main>
+    </Pagina>
   );
 }

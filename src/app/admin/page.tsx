@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { sessaoAtual } from "@/server/sessao-server";
 import { PainelClient } from "./painel-client";
+import { Pagina } from "./pagina";
 
 /*
  * Admin — Domínio 8. A Home dos sócios é o painel de vigilância;
@@ -11,9 +12,10 @@ export default async function AdminHome() {
   if (session?.papel === "funcionario") redirect("/admin/dia");
 
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-6">
-      <h1 className="mb-4 text-xl font-semibold tracking-tight">Painel</h1>
+    /* o cabeçalho vive no client: o resumo dele conta quantas coisas
+       pedem decisão hoje, e esse número vem das queries */
+    <Pagina>
       <PainelClient />
-    </main>
+    </Pagina>
   );
 }

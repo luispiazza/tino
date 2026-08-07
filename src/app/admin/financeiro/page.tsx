@@ -1,4 +1,5 @@
 import { FinanceiroClient } from "./financeiro-client";
+import { Pagina } from "../pagina";
 
 /*
  * Domínio 7, começo: a esteira de cobranças. Agenda de obrigações,
@@ -6,8 +7,8 @@ import { FinanceiroClient } from "./financeiro-client";
  */
 export default function FinanceiroPage() {
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-6">
+    <Pagina>
       <FinanceiroClient />
-    </main>
+    </Pagina>
   );
 }

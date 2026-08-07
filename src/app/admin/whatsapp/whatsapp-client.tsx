@@ -15,6 +15,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+/* só Cabecalho: esta tela tem uma Secao própria, com descrição, logo abaixo */
+import { Cabecalho } from "@/components/viz/secao";
 
 const MOTIVO: Record<string, string> = {
   pedido_explicito: "pediu um humano",
@@ -64,13 +66,10 @@ export function WhatsappClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">WhatsApp</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            atendimento por IA no número comercial
-          </p>
-        </div>
+      <Cabecalho
+        titulo="WhatsApp"
+        resumo="atendimento por IA no número comercial"
+      >
         <label className="flex items-center gap-2 text-sm">
           <span className={config.iaAtiva ? "" : "text-muted-foreground"}>
             {config.iaAtiva ? "IA respondendo" : "IA desligada"}
@@ -81,7 +80,7 @@ export function WhatsappClient() {
             onCheckedChange={(iaAtiva) => salvar.mutate({ iaAtiva })}
           />
         </label>
-      </header>
+      </Cabecalho>
 
       {!config.iaAtiva && (
         <p className="rounded-lg border border-[--border] px-3 py-2 text-sm text-muted-foreground">

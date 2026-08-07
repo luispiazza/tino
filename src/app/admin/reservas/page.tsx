@@ -1,4 +1,5 @@
 import { ReservasClient } from "./reservas-client";
+import { Pagina } from "../pagina";
 
 /*
  * Reservas — Domínio 1. A criação SEMPRE passa pela regra única de
@@ -7,8 +8,8 @@ import { ReservasClient } from "./reservas-client";
  */
 export default function ReservasPage() {
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-6">
+    <Pagina>
       <ReservasClient />
-    </main>
+    </Pagina>
   );
 }

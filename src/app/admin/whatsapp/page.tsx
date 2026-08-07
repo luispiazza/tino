@@ -1,4 +1,5 @@
 import { WhatsappClient } from "./whatsapp-client";
+import { Pagina } from "../pagina";
 
 /*
  * Domínio 5 — WhatsApp IA. Onda 1: cliente (disponibilidade, dados da
@@ -7,8 +8,8 @@ import { WhatsappClient } from "./whatsapp-client";
  */
 export default function WhatsappPage() {
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-6">
+    <Pagina>
       <WhatsappClient />
-    </main>
+    </Pagina>
   );
 }
