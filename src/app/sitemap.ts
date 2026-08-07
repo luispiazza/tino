@@ -16,6 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lista = await db.select().from(estudios);
   return [
     { url: BASE, changeFrequency: "weekly", priority: 1 },
+    /* o combinador é a página de conversão da vitrine */
+    { url: `${BASE}/monte`, changeFrequency: "monthly", priority: 0.9 },
     ...lista.map((e) => ({
       url: `${BASE}/estudio/${e.codigo.toLowerCase()}`,
       changeFrequency: "monthly" as const,

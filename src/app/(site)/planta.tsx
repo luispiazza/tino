@@ -4,10 +4,10 @@ import { useState } from "react";
 import Image from "next/image";
 
 /*
- * A planta é o argumento de venda que nenhum concorrente mostra: quem
- * contrata estúdio quer saber onde fica o camarim, se a rampa dá
- * acesso, qual o pé-direito. O desenho técnico é preto sobre branco —
- * invertido, ele se integra ao escuro sem virar mancha luminosa.
+ * A planta é o argumento que nenhum concorrente publica: quem contrata
+ * estúdio quer saber onde fica o camarim, se a rampa dá acesso, qual o
+ * pé-direito. O desenho técnico é preto sobre branco — invertido, ele se
+ * integra ao escuro em vez de virar uma mancha luminosa no meio da página.
  */
 export function Planta({
   estudio,
@@ -22,56 +22,74 @@ export function Planta({
   const src = vendo === "eletrica" && eletrica ? eletrica : baixa;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <span className="text-xs tracking-widest text-muted-foreground uppercase">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-4">
+        <span className="font-mono text-[0.6875rem] tracking-[0.22em] text-concreto uppercase">
           Planta
         </span>
         <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => setVendo("baixa")}
-            className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
-              vendo === "baixa"
-                ? "bg-foreground/10 text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
+          <Aba ativa={vendo === "baixa"} onClick={() => setVendo("baixa")}>
             baixa
-          </button>
+          </Aba>
           {eletrica && (
-            <button
-              type="button"
+            <Aba
+              ativa={vendo === "eletrica"}
               onClick={() => setVendo("eletrica")}
-              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
-                vendo === "eletrica"
-                  ? "bg-foreground/10 text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
             >
               elétrica
-            </button>
+            </Aba>
           )}
         </div>
         <a
           href={src}
           target="_blank"
           rel="noreferrer"
-          className="ml-auto text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          className="ml-auto font-mono text-[0.6875rem] tracking-[0.16em] text-concreto uppercase transition-colors hover:text-papel focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-creme"
         >
-          abrir
+          Abrir ↗
         </a>
       </div>
-      <a href={src} target="_blank" rel="noreferrer" className="block">
+
+      <a
+        href={src}
+        target="_blank"
+        rel="noreferrer"
+        className="block border border-fio focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-creme"
+      >
         <Image
           src={src}
-          alt={`Planta ${vendo} do Estúdio ${estudio}`}
+          alt={`Planta ${vendo} do estúdio ${estudio}`}
           width={1919}
           height={805}
-          sizes="(min-width: 1024px) 900px, 100vw"
-          className="w-full rounded-lg border bg-background/50 invert-[0.92] hue-rotate-180"
+          sizes="(min-width: 1024px) 1000px, 100vw"
+          className="w-full invert-[0.92] hue-rotate-180"
         />
       </a>
     </div>
+  );
+}
+
+function Aba({
+  ativa,
+  onClick,
+  children,
+}: {
+  ativa: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={ativa}
+      className={`min-h-8 px-2.5 font-mono text-[0.6875rem] tracking-[0.16em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-creme ${
+        ativa
+          ? "bg-papel/10 text-papel"
+          : "text-concreto hover:text-papel"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

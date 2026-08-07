@@ -2,286 +2,331 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import Image from "next/image";
 import Link from "next/link";
-import { db } from "@/server/db";
-import { estudios } from "@/server/db/schema";
 import type { Campanha } from "@/server/routers/campanhas";
-import { MonteSeuTino } from "./monte-seu-tino";
+import { Acao } from "./acao";
+import { Anotacao, Cota } from "./cota";
+import { ENDERECOS, FOTOS, INSTAGRAM } from "./conteudo";
+import { carregarEstudios, type EstudioVitrine } from "./dados";
 
 /*
- * A vitrine — Domínio 6, decisões de 29/07: uma vitrine forte, não
- * quatro homes; a unidade de apresentação é a COMBINAÇÃO; a única ação
- * creme é o Monte seu Tino. Campanha troca o hero; o resto é o mesmo
- * (página só de hero é página-porta). SSR: a ficha vai no HTML.
+ * A vitrine — Domínio 6. A ficha técnica sai no HTML do servidor: é dela
+ * que vem a busca orgânica, e o crawler não executa JS.
  *
- * Fotos e vídeo entram nos espaços já reservados quando o material
- * chegar; até lá o hero é tipográfico.
+ * A ordem responde à pergunta do produtor, nessa sequência: serve para o
+ * que eu quero fazer? cabe? como fecho? Hero, espaços, e a saída para o
+ * combinador de quem ainda não sabe escolher. A campanha troca o hero e
+ * nada mais — página só de hero é página-porta para o Google.
  */
 
-const INSTAGRAM = "https://www.instagram.com/tino.estudios";
-
-/*
- * O vídeo do hero é opcional e entra sem código novo: basta colocar o
- * arquivo em public/video/hero.mp4. Sem ele, a foto segura o hero (e
- * serve de poster enquanto o vídeo carrega).
- */
+/* O vídeo é opcional e entra sem código novo: basta pôr o arquivo em
+ * public/video/hero.mp4. Sem ele, a foto segura o hero. */
 function videoDoHero(): string | null {
-  const arquivo = path.join(process.cwd(), "public", "video", "hero.mp4");
-  return existsSync(arquivo) ? "/video/hero.mp4" : null;
+  return existsSync(path.join(process.cwd(), "public", "video", "hero.mp4"))
+    ? "/video/hero.mp4"
+    : null;
 }
 
-/* Fotos do acervo do estúdio (repo tino-estudio). Estúdio sem foto
- * aparece sem imagem, nunca com placeholder genérico. */
-const FOTOS: Record<string, string> = {
-  A: "/fotos/estudio-a.jpg",
-  B: "/fotos/estudio-b.jpg",
-  C: "/fotos/estudio-c.jpg",
-  E: "/fotos/estudio-e.jpg",
-};
-
-/* As três que mais saem lideram (29/07). Vira cadastro quando as
- * combinações ganharem tela — por ora é conteúdo, não dado. */
-const COMBINACOES = [
-  {
-    nome: "A+B",
-    areaM2: 360,
-    descricao: "O principal com o complementar direto — o mais pedido.",
-  },
-  {
-    nome: "A+B+C",
-    areaM2: 444,
-    descricao: "O complexo quase inteiro, para produções grandes.",
-  },
-  {
-    nome: "E+C",
-    areaM2: 144,
-    descricao: "Compacto e completo, para equipes menores.",
-  },
-];
-
 export async function Vitrine({ campanha }: { campanha: Campanha | null }) {
-  const lista = await db.select().from(estudios);
+  const lista = await carregarEstudios();
   const principais = lista.filter((e) => !e.ehComplementar);
   const complementares = lista.filter((e) => e.ehComplementar);
-
   const video = campanha?.heroVideoUrl ?? videoDoHero();
+
+  /* a campanha segue o visitante até o combinador: é a origem do funil */
+  const linkMonte = campanha?.slug
+    ? `/monte?origem=${encodeURIComponent(campanha.slug)}`
+    : "/monte";
 
   return (
     <>
-      {/*
-       * Hero em tela cheia, fora da caixa de conteúdo: vídeo de fundo
-       * (campanha troca o arquivo), logo, e a única ação creme da página.
-       */}
-      {/* isolate + camadas positivas: z negativo escaparia para trás do
-          fundo da página e o hero apareceria preto */}
-      <header className="relative isolate flex min-h-svh flex-col items-center justify-center gap-6 px-6 text-center">
-        {video ? (
-          <video
-            src={video}
-            poster="/fotos/hero.jpg"
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 z-0 h-full w-full object-cover"
-          />
-        ) : (
-          <Image
-            src="/fotos/hero.jpg"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="z-0 object-cover"
-          />
-        )}
-        {/* o texto precisa ganhar do vídeo, sempre */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-background/70 via-background/40 to-background" />
+      <Hero campanha={campanha} video={video} linkMonte={linkMonte} />
 
-        <div className="relative z-20 flex flex-col items-center gap-6">
-        {/* logo entre dois fios, como a marca se apresenta */}
-        <div className="flex items-center gap-5">
-          <span className="h-px w-10 bg-foreground/30 sm:w-16" />
+      {/* Os espaços — a ficha técnica que o Google indexa */}
+      <section
+        id="espacos"
+        className="mx-auto w-full max-w-6xl scroll-mt-8 px-6 py-20 sm:py-28"
+      >
+        <Anotacao>Os espaços</Anotacao>
+
+        {principais.length > 0 && (
+          <div className="mt-8 grid gap-10 sm:grid-cols-2 sm:gap-8">
+            {principais.map((e) => (
+              <CartaoEspaco key={e.id} estudio={e} />
+            ))}
+          </div>
+        )}
+
+        {complementares.length > 0 && (
+          /*
+           * A regra vira estrutura: o complementar não aparece em pé de
+           * igualdade com o principal. A cota diz o porquê, e a hierarquia
+           * também é largura — o bloco ocupa menos página.
+           */
+          <div className="mt-16 max-w-4xl">
+            <Cota>Complementar · não se aluga sozinho</Cota>
+            <div className="mt-8 grid gap-10 sm:grid-cols-2 sm:gap-8">
+              {complementares.map((e) => (
+                <CartaoEspaco key={e.id} estudio={e} complementar />
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* A saída de quem não sabe escolher — leva ao combinador */}
+      <section className="border-y border-fio">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-6 py-20 text-center sm:py-28">
+          <h2 className="font-condensed text-3xl leading-[1.0] font-semibold tracking-tight uppercase sm:text-5xl">
+            Não sabe qual estúdio escolher?
+          </h2>
+          <p className="max-w-xl text-concreto">
+            Monte a combinação por área, data e tipo de produção. A conversa no
+            WhatsApp já começa com tudo anotado.
+          </p>
+          <Acao href={linkMonte} className="mt-2">
+            Monte seu Tino
+          </Acao>
+        </div>
+      </section>
+
+      <Sobre />
+      <Rodape />
+    </>
+  );
+}
+
+function Hero({
+  campanha,
+  video,
+  linkMonte,
+}: {
+  campanha: Campanha | null;
+  video: string | null;
+  linkMonte: string;
+}) {
+  return (
+    /* isolate + camadas positivas: z negativo escaparia para trás do fundo
+       da página e o hero apareceria preto */
+    <header className="relative isolate flex min-h-svh flex-col items-center justify-center px-6 py-28 text-center">
+      {video ? (
+        <video
+          src={video}
+          poster="/fotos/hero.jpg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+        />
+      ) : (
+        <Image
+          src="/fotos/hero.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="z-0 object-cover"
+        />
+      )}
+      {/* o estúdio é branco: no escuro a foto vira a luz da página, e o
+          texto precisa ganhar dela sempre */}
+      <div className="absolute inset-0 z-10 bg-linear-to-b from-fundo/88 via-fundo/74 to-fundo" />
+
+      <div className="relative z-20 flex w-full max-w-4xl flex-col items-center">
+        {/* a marca se apresenta entre dois fios */}
+        <div className="flex items-center gap-5" data-entra>
+          <span className="h-px w-10 bg-papel/25 sm:w-16" />
           <Image
             src="/logo.png"
             alt="Tino Estúdio"
             width={944}
             height={411}
             priority
-            className="h-9 w-auto sm:h-11"
+            className="h-8 w-auto sm:h-10"
           />
-          <span className="h-px w-10 bg-foreground/30 sm:w-16" />
+          <span className="h-px w-10 bg-papel/25 sm:w-16" />
         </div>
 
-        <p className="text-xs tracking-[0.25em] text-foreground/70 uppercase">
+        <p
+          className="mt-6 font-mono text-[0.6875rem] tracking-[0.22em] text-concreto uppercase"
+          data-entra
+          style={{ animationDelay: "80ms" }}
+        >
           Vila Romana · São Paulo
         </p>
 
-        <h1 className="max-w-3xl text-5xl leading-[0.95] font-semibold tracking-tight uppercase sm:text-7xl">
-          {campanha?.heroTitulo ?? "Monte seu Tino"}
+        {/*
+         * O hero é uma cota: o que se vende aqui é medida, e a página
+         * anuncia o total do jeito que a planta anuncia — ticks, fio
+         * tracejado e o valor no meio.
+         */}
+        <div
+          className="mt-10 w-full"
+          data-desenha
+          style={{ animationDelay: "160ms" }}
+        >
+          <Cota>+ de 500 m²</Cota>
+        </div>
+
+        <h1
+          /* caixa alta em português carrega cedilha e til: entrelinha
+             apertada demais faz o Ç bater na linha de baixo */
+          className="mt-5 font-condensed text-[clamp(2.25rem,8vw,5.5rem)] leading-[1.02] font-semibold tracking-tight uppercase"
+          data-entra
+          style={{ animationDelay: "240ms" }}
+        >
+          {campanha?.heroTitulo ?? "Quatro espaços que se somam"}
         </h1>
 
-        <p className="max-w-xl text-base text-foreground/80 sm:text-lg">
+        <p
+          className="mt-7 max-w-xl text-base text-papel/75 sm:text-lg"
+          data-entra
+          style={{ animationDelay: "340ms" }}
+        >
           {campanha?.heroSubtitulo ??
-            "Mais de 500m² e duas entradas independentes: ciclorama de 54m², pé-direito de 10m — montados do tamanho da sua produção."}
+            "Duas entradas independentes, ciclorama de 54 m² e pé-direito de 10 m — montados do tamanho da sua produção."}
         </p>
 
-        <div className="mt-2 flex flex-col items-center gap-4">
-          <a
-            href="#monte"
-            className="rounded-full bg-primary px-8 py-3 text-sm font-semibold tracking-wide text-primary-foreground uppercase transition-opacity hover:opacity-90"
-          >
-            Comece já
-          </a>
-          <a
-            href={INSTAGRAM}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs tracking-[0.2em] text-foreground/60 uppercase transition-colors hover:text-foreground"
-          >
-            Instagram
-          </a>
-        </div>
-        </div>
-
-        <a
-          href="#monte"
-          aria-label="Ver os espaços"
-          className="absolute bottom-8 z-20 text-foreground/50 transition-colors hover:text-foreground"
+        <div
+          className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
+          data-entra
+          style={{ animationDelay: "420ms" }}
         >
-          ↓
-        </a>
-      </header>
-
-      <div className="mx-auto flex max-w-4xl flex-col gap-20 px-6 py-16 sm:py-24">
-      {/* Combinações — a prateleira. Complementar não aparece sozinho. */}
-      <section className="flex flex-col gap-6">
-        <h2 className="text-sm tracking-widest text-muted-foreground uppercase">
-          As combinações que mais rodam
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {COMBINACOES.map((c) => (
-            <div
-              key={c.nome}
-              className="flex flex-col gap-2 rounded-2xl border p-6"
-            >
-              <span className="font-mono text-2xl font-semibold">{c.nome}</span>
-              <span className="text-sm text-muted-foreground tabular-nums">
-                {c.areaM2} m²
-              </span>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {c.descricao}
-              </p>
-            </div>
-          ))}
+          <Acao href={linkMonte}>Monte seu Tino</Acao>
+          <Acao href="#espacos" variante="fio">
+            Ver estúdios
+          </Acao>
         </div>
-      </section>
+      </div>
+    </header>
+  );
+}
 
-      {/* Monte seu Tino — a única ação creme da página */}
-      <section id="monte" className="flex flex-col gap-6">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Monte seu Tino
-          </h2>
-          <p className="mt-1 text-muted-foreground">
-            Escolha a combinação e a data — a conversa já começa com tudo
-            anotado.
-          </p>
+function CartaoEspaco({
+  estudio: e,
+  complementar = false,
+}: {
+  estudio: EstudioVitrine;
+  complementar?: boolean;
+}) {
+  const foto = e.fotoUrl ?? FOTOS[e.codigo];
+  const resumo = e.visaoGeral ?? e.fichaTecnica;
+
+  return (
+    /* o cartão inteiro leva à página do estúdio: alvo grande, nada de
+       link de 12px no fim do texto */
+    <Link
+      href={`/estudio/${e.codigo.toLowerCase()}`}
+      className="group block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-creme"
+    >
+      {foto && (
+        <div className="relative overflow-hidden border border-fio">
+          <Image
+            src={foto}
+            alt={`Estúdio ${e.codigo} — ${e.nome}`}
+            width={1920}
+            height={1080}
+            sizes="(min-width: 640px) 50vw, 100vw"
+            className={`w-full object-cover brightness-[0.82] transition duration-700 group-hover:scale-[1.02] group-hover:brightness-100 motion-reduce:transition-none ${
+              complementar ? "aspect-16/9" : "aspect-4/3"
+            }`}
+          />
+          <span className="absolute top-3 left-3 bg-fundo/70 px-2 py-1 font-mono text-[0.6875rem] tracking-[0.2em] text-papel">
+            {e.codigo}
+          </span>
         </div>
-        <MonteSeuTino
-          combinacoes={COMBINACOES.map((c) => c.nome)}
-          campanhaSlug={campanha?.slug ?? null}
-        />
-      </section>
-
-      {/* Ficha técnica — o SEO orgânico mora aqui, em HTML de servidor */}
-      {lista.length > 0 && (
-        <section className="flex flex-col gap-6">
-          <h2 className="text-sm tracking-widest text-muted-foreground uppercase">
-            Os espaços
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* o card inteiro leva à página do estúdio: alvo grande,
-                nada de link textual de 12px no fim do texto */}
-            {[...principais, ...complementares].map((e) => (
-              <Link
-                key={e.id}
-                href={`/estudio/${e.codigo.toLowerCase()}`}
-                className="group overflow-hidden rounded-2xl border transition-colors hover:border-foreground/30"
-              >
-                {FOTOS[e.codigo] && (
-                  <Image
-                    src={FOTOS[e.codigo]}
-                    alt={`Estúdio ${e.codigo}`}
-                    width={1920}
-                    height={1080}
-                    sizes="(min-width: 640px) 50vw, 100vw"
-                    className="aspect-[16/10] w-full object-cover"
-                  />
-                )}
-                <div className="p-6">
-                <div className="flex items-baseline gap-3">
-                  <span className="font-mono text-xl font-semibold">
-                    {e.codigo}
-                  </span>
-                  <span className="text-muted-foreground">{e.nome}</span>
-                  {e.areaM2 && (
-                    <span className="ml-auto text-sm text-muted-foreground tabular-nums">
-                      {e.areaM2} m²
-                    </span>
-                  )}
-                </div>
-                {e.ehComplementar && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    complementar — entra junto de um principal
-                  </p>
-                )}
-                {(e.visaoGeral || e.fichaTecnica) && (
-                  <p className="mt-3 text-sm whitespace-pre-line text-muted-foreground">
-                    {e.visaoGeral ?? e.fichaTecnica}
-                  </p>
-                )}
-                <span className="mt-4 inline-block text-sm text-primary transition-opacity group-hover:opacity-100 sm:opacity-70">
-                  Ver ficha e planta →
-                </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
       )}
 
-      {/* Quem somos — o texto do estúdio, não o meu */}
-      <section className="flex max-w-2xl flex-col gap-4">
-        <h2 className="text-sm tracking-widest text-muted-foreground uppercase">
-          Quem somos
-        </h2>
-        <p className="text-muted-foreground">
-          O Tino Estúdio nasceu da necessidade de ter um espaço que entendesse
-          de verdade o que uma produção audiovisual precisa. Criado por dois
-          sócios com anos de experiência no mercado criativo, com a convicção
-          de que infraestrutura de qualidade não deveria ser privilégio de
-          grandes produções.
-        </p>
-        <p className="text-muted-foreground">
-          O A e o E possuem entradas separadas e funcionam de forma totalmente
-          autônoma — ideal para produções simultâneas. B e C são complementares,
-          pensados para ampliar as possibilidades de cada projeto.
-        </p>
-      </section>
+      <div className="mt-4 flex items-baseline gap-3">
+        <h3 className="font-condensed text-2xl leading-none font-semibold tracking-tight uppercase">
+          {e.nome}
+        </h3>
+        {e.areaM2 && (
+          <span className="ml-auto font-mono text-sm text-concreto tabular-nums">
+            {e.areaM2} m²
+          </span>
+        )}
+      </div>
 
-      <footer className="flex flex-col gap-1 border-t pt-8 text-sm text-muted-foreground">
-        <span>Tino Estúdio · Vila Romana, São Paulo</span>
-        <span>Rua Camilo, 789 · Rua Marco Aurélio, 268</span>
+      {complementar && e.bases.length > 0 && (
+        <p className="mt-1.5 font-mono text-[0.6875rem] tracking-[0.16em] text-concreto uppercase">
+          Entra junto de {e.bases.map((b) => b.codigo).join(" ou ")}
+        </p>
+      )}
+
+      {resumo && (
+        <p className="mt-2.5 line-clamp-2 text-sm text-concreto">{resumo}</p>
+      )}
+
+      {/* o creme é a cor da ação e a página já tem a dela: aqui o convite
+          é tipográfico, senão o sinal vira decoração */}
+      <span className="mt-3 inline-block font-mono text-[0.6875rem] tracking-[0.16em] text-concreto uppercase transition-colors group-hover:text-papel">
+        Ficha e planta →
+      </span>
+    </Link>
+  );
+}
+
+function Sobre() {
+  return (
+    <section className="mx-auto w-full max-w-6xl px-6 py-20 sm:py-28">
+      <Anotacao>Sobre</Anotacao>
+      <div className="mt-8 grid gap-10 sm:grid-cols-[1fr_1.5fr] sm:gap-16">
+        <p className="font-condensed text-2xl leading-[1.12] font-semibold tracking-tight uppercase sm:text-3xl">
+          Infraestrutura de produção grande, sem exigir produção grande.
+        </p>
+        <div className="flex max-w-[58ch] flex-col gap-4 text-concreto">
+          <p>
+            O Tino Estúdio nasceu da necessidade de ter um espaço que entendesse
+            de verdade o que uma produção audiovisual precisa. Criado por dois
+            sócios com anos de mercado criativo, com a convicção de que
+            infraestrutura de qualidade não deveria ser privilégio de grandes
+            produções.
+          </p>
+          <p>
+            O A e o E têm entradas separadas e funcionam de forma totalmente
+            autônoma — dá para rodar duas produções ao mesmo tempo. B e C são
+            complementares: entram junto de um principal e ampliam o que cabe
+            em cada projeto.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Rodape() {
+  return (
+    <footer className="border-t border-fio">
+      <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-14 sm:flex-row sm:justify-between">
+        <div className="flex flex-col gap-4">
+          <Image
+            src="/logo.png"
+            alt="Tino Estúdio"
+            width={944}
+            height={411}
+            className="h-7 w-auto"
+          />
+          <span className="font-mono text-[0.6875rem] tracking-[0.2em] text-concreto uppercase">
+            Vila Romana · São Paulo
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2 text-sm text-concreto">
+          {ENDERECOS.map((endereco) => (
+            <span key={endereco}>{endereco}</span>
+          ))}
+        </div>
+
         <a
           href={INSTAGRAM}
           target="_blank"
           rel="noreferrer"
-          className="w-fit hover:text-foreground"
+          className="h-fit font-mono text-[0.6875rem] tracking-[0.2em] text-concreto uppercase transition-colors hover:text-papel focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-creme"
         >
           @tino.estudios
         </a>
-      </footer>
       </div>
-    </>
+    </footer>
   );
 }
