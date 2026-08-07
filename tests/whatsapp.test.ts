@@ -18,7 +18,8 @@ import { contextoDeHoje } from "@/server/whatsapp/agente";
 import { montarConhecimento } from "@/server/whatsapp/conhecimento";
 import { atender, garantirConfig } from "@/server/whatsapp/atendimento";
 import { executarFerramenta } from "@/server/whatsapp/ferramentas";
-import { criarBancoDeTeste, criarCaller, sessaoFake } from "./helpers";
+import { appRouter } from "@/server/routers/_app";
+import { criarBancoDeTeste, criarCaller, criarCtx, sessaoFake } from "./helpers";
 
 let db: DB;
 
@@ -462,6 +463,24 @@ describe("admin — quem pode mexer", () => {
     await expect(func.whatsapp.config()).rejects.toThrow();
     await expect(func.whatsapp.conversas()).rejects.toThrow();
     await expect(func.whatsapp.salvarConfig({ iaAtiva: true })).rejects.toThrow();
+  });
+
+  it("a URL do webhook sai do host que serve o admin, não de variável", async () => {
+    /* o deploy pode não ser o domínio público — e colar a URL errada na
+     * Meta faz o atendimento inteiro sumir sem erro nenhum aparecer */
+    process.env.NEXT_PUBLIC_SITE_URL = "https://dominio-que-nao-serve-isto.com.br";
+
+    const ctx = criarCtx(db, sessaoFake("socio"));
+    ctx.req = new Request("https://tino-v2-production.up.railway.app/api/trpc/x", {
+      headers: { "x-forwarded-host": "tino-v2-production.up.railway.app" },
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    const { webhookUrl } = await caller.whatsapp.config();
+    expect(webhookUrl).toBe(
+      "https://tino-v2-production.up.railway.app/api/whatsapp/webhook"
+    );
+    delete process.env.NEXT_PUBLIC_SITE_URL;
   });
 
   it("a tela nunca devolve o valor de uma credencial", async () => {
