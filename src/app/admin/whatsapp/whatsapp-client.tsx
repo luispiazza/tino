@@ -46,9 +46,18 @@ const quando = (d: Date | string | null) =>
       })
     : "—";
 
-export function WhatsappClient() {
+/* conversas primeiro: quem abre esta tela quer ver quem está falando com
+   o estúdio, não reconferir credencial da Meta */
+const ABAS = ["conversas", "conexao", "horario", "ia"] as const;
+
+export function WhatsappClient({ abaInicial }: { abaInicial?: string }) {
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.whatsapp.config.useQuery();
+
+  /* aba desconhecida na URL não pode deixar a tela sem conteúdo */
+  const aba = ABAS.includes(abaInicial as (typeof ABAS)[number])
+    ? (abaInicial as (typeof ABAS)[number])
+    : "conversas";
 
   const salvar = trpc.whatsapp.salvarConfig.useMutation({
     onSuccess: () => {
@@ -85,17 +94,21 @@ export function WhatsappClient() {
       {!config.iaAtiva && (
         <p className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
           Desligada, a IA não responde. As mensagens continuam chegando e
-          ficando gravadas no histórico.
+          ficando gravadas nas conversas.
         </p>
       )}
 
-      <Tabs defaultValue="conexao">
+      <Tabs defaultValue={aba}>
         <TabsList>
+          <TabsTrigger value="conversas">Conversas</TabsTrigger>
           <TabsTrigger value="conexao">Conexão</TabsTrigger>
           <TabsTrigger value="horario">Horário</TabsTrigger>
           <TabsTrigger value="ia">IA</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="conversas">
+          <Conversas />
+        </TabsContent>
 
         <TabsContent value="conexao">
           <Conexao
@@ -121,10 +134,6 @@ export function WhatsappClient() {
             systemPrompt={config.systemPrompt}
             politica={config.politica}
           />
-        </TabsContent>
-
-        <TabsContent value="historico">
-          <Historico />
         </TabsContent>
       </Tabs>
     </div>
@@ -532,9 +541,9 @@ function ComportamentoIA({
   );
 }
 
-/* -------------------------------------------------------------- Histórico */
+/* -------------------------------------------------------------- Conversas */
 
-function Historico() {
+function Conversas() {
   const utils = trpc.useUtils();
   const [contatoId, setContatoId] = useState<number | null>(null);
   const [resposta, setResposta] = useState("");

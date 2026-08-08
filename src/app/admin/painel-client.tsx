@@ -53,7 +53,18 @@ export function PainelClient() {
     (r) => r.status !== "cancelada" && !r.whatsappEnviadoEm
   );
   const pendentes = (reservas.data ?? []).filter((r) => r.status === "pendente");
-  const precisaDeVoce = atrasadas.length + naoEnviadas.length + pendentes.length;
+  /*
+   * Conversa parada em handoff também pede decisão hoje, então entra na
+   * conta do cabeçalho. O detalhe dela mora na seção própria — repetir
+   * o mesmo item em dois blocos é como um painel começa a avisar demais.
+   * A query é a mesma da seção; o react-query resolve as duas com uma
+   * chamada só.
+   */
+  const esperandoResposta = (
+    trpc.whatsapp.conversas.useQuery().data ?? []
+  ).filter((c) => c.handoff).length;
+  const precisaDeVoce =
+    atrasadas.length + naoEnviadas.length + pendentes.length + esperandoResposta;
 
   /* mesma definição do Financeiro: total em aberto, atrasado incluído —
    * a palavra tem que somar o mesmo valor nas duas telas */
@@ -178,6 +189,8 @@ export function PainelClient() {
           </div>
         </section>
 
+        <ConversasWhatsapp />
+
         {/* Ocupação por estúdio */}
         <section className="rounded-xl border bg-card p-5">
           <h2 className="mb-3 text-sm font-medium">Ocupação por estúdio</h2>
@@ -270,6 +283,72 @@ export function PainelClient() {
         </section>
       </div>
     </div>
+  );
+}
+
+/* os motivos que a IA registra ao passar a conversa para um humano */
+const MOTIVO: Record<string, string> = {
+  pedido_explicito: "pediu um humano",
+  confianca_baixa: "IA sem certeza",
+  sentimento_negativo: "cliente irritado",
+  fechar_reserva: "quer fechar reserva",
+  valor: "perguntou valor",
+  reclamacao: "reclamação",
+  fora_de_escopo: "fora do escopo",
+};
+
+/*
+ * Conversas no WhatsApp — o que a IA não resolveu sozinha.
+ *
+ * O painel não conta conversa: conversa atendida pela IA não pede nada
+ * de ninguém, e "34 esta semana" seria retrovisor. O que sobe aqui é o
+ * handoff — a conversa em que a IA parou e alguém precisa responder —,
+ * porque essa é a única que tem hora para ser lida.
+ */
+function ConversasWhatsapp() {
+  const conversas = trpc.whatsapp.conversas.useQuery();
+  const lista = conversas.data ?? [];
+  const esperando = lista.filter((c) => c.handoff);
+  const assumidas = lista.filter((c) => c.iaPausada && !c.handoff).length;
+
+  return (
+    <section className="rounded-xl border bg-card p-5">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-medium">Conversas no WhatsApp</h2>
+        <Link
+          href="/admin/whatsapp?aba=conversas"
+          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          conversas →
+        </Link>
+      </div>
+
+      {conversas.data && esperando.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          {assumidas > 0
+            ? `A IA está dando conta. ${assumidas} ${assumidas === 1 ? "conversa assumida" : "conversas assumidas"} por você.`
+            : "A IA está dando conta. Ninguém esperando resposta."}
+        </p>
+      )}
+
+      <div className="flex flex-col divide-y text-sm">
+        {esperando.slice(0, 4).map((c) => (
+          <Item
+            key={c.id}
+            href="/admin/whatsapp?aba=conversas"
+            marca={VIZ.status.atencao}
+            titulo={c.nome ?? c.telefone}
+            detalhe={MOTIVO[c.handoff?.motivo ?? ""] ?? "esperando resposta"}
+          />
+        ))}
+      </div>
+
+      {esperando.length > 4 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          e mais {esperando.length - 4} esperando.
+        </p>
+      )}
+    </section>
   );
 }
 
