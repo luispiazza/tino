@@ -87,7 +87,12 @@ const pedir = () =>
 const corpoDaChamada = (i = 0) =>
   JSON.parse(String(chamadas[i].init.body)) as {
     model: string;
-    messages: { role: string; content: string; tool_calls?: unknown[] }[];
+    messages: {
+      role: string;
+      content: string;
+      tool_calls?: unknown[];
+      extra_content?: unknown;
+    }[];
     tools: { function: { name: string } }[];
     tool_choice: string;
     reasoning_effort?: string;
@@ -120,7 +125,7 @@ describe("agente — o envelope que vai para o modelo", () => {
     expect(chamadas).toHaveLength(0);
   });
 
-  it("acerta endpoint, chave e o modelo que a v1 usava", async () => {
+  it("acerta endpoint, chave e modelo", async () => {
     enfileirar(textoSimples("Oi! Como posso ajudar?"));
     const r = await pedir();
 
@@ -131,7 +136,7 @@ describe("agente — o envelope que vai para o modelo", () => {
     expect((chamadas[0].init.headers as Record<string, string>).authorization).toBe(
       "Bearer chave-de-teste"
     );
-    expect(corpoDaChamada().model).toBe("gemini-2.5-flash");
+    expect(corpoDaChamada().model).toBe("gemini-3.6-flash");
     expect(corpoDaChamada().tool_choice).toBe("auto");
     expect(r.texto).toBe("Oi! Como posso ajudar?");
     expect(r.erro).toBeNull();
@@ -142,12 +147,34 @@ describe("agente — o envelope que vai para o modelo", () => {
    * do Forge e vira 400 no Google. Este teste é a trava para ele não
    * voltar por cópia de código antigo.
    */
-  it("não manda o campo de thinking do Forge, e pede raciocínio nenhum", async () => {
+  it("não manda o campo de thinking do Forge, e pede o piso de raciocínio", async () => {
     enfileirar(textoSimples("ok"));
     await pedir();
 
     expect(corpoDaChamada().thinking).toBeUndefined();
-    expect(corpoDaChamada().reasoning_effort).toBe("none");
+    expect(corpoDaChamada().reasoning_effort).toBe("low");
+  });
+
+  /*
+   * O Gemini 3 devolve a assinatura cifrada do raciocínio junto da chamada
+   * de ferramenta, e cobra que ela volte intacta no turno seguinte. Como
+   * quem monta o histórico é este código, perder o campo aqui degradaria
+   * exatamente as conversas que usam ferramenta — as que mais importam.
+   */
+  it("devolve a assinatura de raciocínio intacta na volta da ferramenta", async () => {
+    const assinatura = { google: { thought_signature: "EmcKZQERTTIP" } };
+    const pedido = pedeFerramenta("escalar_para_humano", { motivo: "teste" });
+    (pedido.choices[0].message as Record<string, unknown>).extra_content =
+      assinatura;
+    enfileirar(pedido);
+    enfileirar(textoSimples("Já chamei alguém."));
+
+    await pedir();
+
+    const doAssistente = corpoDaChamada(1).messages.find(
+      (m) => m.role === "assistant"
+    );
+    expect(doAssistente?.extra_content).toEqual(assinatura);
   });
 
   it("as três ferramentas da Onda 1 vão no formato de function calling", () => {

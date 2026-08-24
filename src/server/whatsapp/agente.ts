@@ -10,18 +10,22 @@ import type { PapelWhatsapp } from "./identidade";
  * que já haviam divergido — só um deles ignorava mensagem de grupo. Aqui
  * existe este caminho e nenhum outro.
  *
- * O modelo é o mesmo da v1 — Gemini 2.5 Flash, em API compatível com a da
- * OpenAI —, mas falado direto com o Google. Até 24/08 ele vinha pelo
- * gateway do Forge (Manus); nesse dia `forge.manus.im` saiu do DNS e levou
- * o atendimento junto. Era a amarra que este comentário já previa, e o
- * conserto foi o previsto: variável de ambiente, porque só este arquivo
- * fala com o modelo.
+ * Gemini pelo Google, em API compatível com a da OpenAI. Até 24/08 o
+ * caminho era o gateway do Forge (Manus); nesse dia `forge.manus.im` saiu
+ * do DNS e levou o atendimento junto. Era a amarra que este comentário já
+ * previa, e o conserto foi o previsto: variável de ambiente, porque só
+ * este arquivo fala com o modelo.
+ *
+ * O modelo deixou de ser o `gemini-2.5-flash` da v1 no mesmo dia, e não
+ * por escolha: o Google fechou o 2.5 para contas novas, e a chave nova
+ * levava 404. Trocar de geração não é só trocar o nome — ver o
+ * `reasoning_effort` lá embaixo.
  *
  * Os nomes das variáveis são genéricos de propósito. Batizar a
  * configuração com o nome de um fornecedor foi metade do problema da vez
  * passada — quando ele caiu, o código todo ainda dizia "Forge".
  */
-const MODELO = process.env.LLM_MODELO ?? "gemini-2.5-flash";
+const MODELO = process.env.LLM_MODELO ?? "gemini-3.6-flash";
 
 /*
  * Base no sentido dos SDKs da OpenAI: tudo que vem antes de
@@ -49,6 +53,15 @@ interface MensagemLLM {
   name?: string;
   tool_call_id?: string;
   tool_calls?: ChamadaFerramenta[];
+  /*
+   * O Gemini 3 devolve aqui a assinatura cifrada do raciocínio daquele
+   * turno. Quem monta o histórico do lado do cliente — nós — é obrigado a
+   * devolvê-la intacta na volta seguinte, ou o modelo perde o fio do que
+   * estava pensando quando pediu a ferramenta. Opaco de propósito: não se
+   * lê nem se remonta, só se repassa. Provedor que não usa isso não manda
+   * o campo, e `JSON.stringify` some com ele sozinho.
+   */
+  extra_content?: unknown;
 }
 
 interface RespostaLLM {
@@ -56,6 +69,7 @@ interface RespostaLLM {
     message?: {
       content?: string | null;
       tool_calls?: ChamadaFerramenta[];
+      extra_content?: unknown;
     };
     finish_reason?: string | null;
   }[];
@@ -182,11 +196,15 @@ async function chamarLLM(
       /*
        * O `thinking: { budget_tokens: 128 }` da v1 era extensão do Forge:
        * em qualquer outro provedor vira campo desconhecido e derruba a
-       * chamada com 400. `reasoning_effort: "none"` é o equivalente na API
-       * do Google e mantém a intenção — atendimento não precisa raciocinar
-       * antes de responder, e raciocinar é cobrado como saída.
+       * chamada com 400.
+       *
+       * Aqui o valor é o piso, não um meio-termo: atendimento não precisa
+       * raciocinar antes de responder e raciocínio é cobrado como saída.
+       * No 2.5 o piso era `none`; a família 3 não deixa desligar, e o
+       * mínimo que a camada compatível aceita é `low`. Se um dia mudar de
+       * modelo, confira este valor antes — é o campo que dá 400.
        */
-      reasoning_effort: "none",
+      reasoning_effort: "low",
     }),
   });
 
@@ -253,6 +271,7 @@ export async function responder(
       role: "assistant",
       content: escolha?.message?.content ?? "",
       tool_calls: chamadas,
+      extra_content: escolha?.message?.extra_content,
     });
 
     for (const chamada of chamadas) {
