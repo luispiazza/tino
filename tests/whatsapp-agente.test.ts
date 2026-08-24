@@ -5,10 +5,10 @@ import { responder } from "@/server/whatsapp/agente";
 import { criarBancoDeTeste } from "./helpers";
 
 /*
- * O agente conversa com o Forge (Manus) por HTTP, em API compatível com a
- * da OpenAI — o mesmo caminho da v1. Aqui o `fetch` é dublê: o que se
- * afirma é o envelope que sai e o laço de ferramentas que volta, que é
- * exatamente a parte impossível de exercitar sem gastar chamada real.
+ * O agente conversa com o Gemini por HTTP, em API compatível com a da
+ * OpenAI. Aqui o `fetch` é dublê: o que se afirma é o envelope que sai e o
+ * laço de ferramentas que volta, que é exatamente a parte impossível de
+ * exercitar sem gastar chamada real.
  */
 const BASE_TESTE = "https://tino-v2-production.up.railway.app";
 
@@ -54,7 +54,7 @@ beforeEach(async () => {
 
   respostas.length = 0;
   chamadas.length = 0;
-  process.env.FORGE_API_KEY = "chave-de-teste";
+  process.env.LLM_API_KEY = "chave-de-teste";
 
   vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
     chamadas.push({ url, init });
@@ -90,12 +90,13 @@ const corpoDaChamada = (i = 0) =>
     messages: { role: string; content: string; tool_calls?: unknown[] }[];
     tools: { function: { name: string } }[];
     tool_choice: string;
+    reasoning_effort?: string;
+    thinking?: unknown;
   };
 
-describe("agente — o envelope que vai para o Forge", () => {
+describe("agente — o envelope que vai para o modelo", () => {
   it("sem chave, nem tenta a chamada", async () => {
-    delete process.env.FORGE_API_KEY;
-    delete process.env.OPENAI_API_KEY;
+    delete process.env.LLM_API_KEY;
 
     const r = await responder({
       ctx: {
@@ -115,7 +116,7 @@ describe("agente — o envelope que vai para o Forge", () => {
       historico: [{ autor: "contato", texto: "oi" }],
     });
 
-    expect(r.erro).toContain("FORGE_API_KEY");
+    expect(r.erro).toContain("LLM_API_KEY");
     expect(chamadas).toHaveLength(0);
   });
 
@@ -123,7 +124,10 @@ describe("agente — o envelope que vai para o Forge", () => {
     enfileirar(textoSimples("Oi! Como posso ajudar?"));
     const r = await pedir();
 
-    expect(chamadas[0].url).toBe("https://forge.manus.im/v1/chat/completions");
+    /* o /v1beta/openai do Google no lugar do /v1 — errar isso dá 404 */
+    expect(chamadas[0].url).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    );
     expect((chamadas[0].init.headers as Record<string, string>).authorization).toBe(
       "Bearer chave-de-teste"
     );
@@ -131,6 +135,19 @@ describe("agente — o envelope que vai para o Forge", () => {
     expect(corpoDaChamada().tool_choice).toBe("auto");
     expect(r.texto).toBe("Oi! Como posso ajudar?");
     expect(r.erro).toBeNull();
+  });
+
+  /*
+   * O que derrubou a chamada quando o provedor mudou: `thinking` era campo
+   * do Forge e vira 400 no Google. Este teste é a trava para ele não
+   * voltar por cópia de código antigo.
+   */
+  it("não manda o campo de thinking do Forge, e pede raciocínio nenhum", async () => {
+    enfileirar(textoSimples("ok"));
+    await pedir();
+
+    expect(corpoDaChamada().thinking).toBeUndefined();
+    expect(corpoDaChamada().reasoning_effort).toBe("none");
   });
 
   it("as três ferramentas da Onda 1 vão no formato de function calling", () => {
@@ -220,7 +237,7 @@ describe("agente — o envelope que vai para o Forge", () => {
     expect(r.erro).toBeNull();
   });
 
-  it("erro HTTP do Forge vira erro registrado, não exceção solta", async () => {
+  it("erro HTTP do provedor vira erro registrado, não exceção solta", async () => {
     vi.stubGlobal("fetch", async () => new Response("sem cota", { status: 429 }));
     const r = await pedir();
     expect(r.texto).toBeNull();

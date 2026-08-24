@@ -35,7 +35,7 @@ export function estadoCredenciais() {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
     wabaId: process.env.WHATSAPP_WABA_ID ?? null,
     verifyToken: Boolean(process.env.WHATSAPP_VERIFY_TOKEN),
-    llm: Boolean(process.env.FORGE_API_KEY ?? process.env.OPENAI_API_KEY),
+    llm: Boolean(process.env.LLM_API_KEY),
   };
 }
 

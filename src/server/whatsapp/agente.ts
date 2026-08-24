@@ -10,21 +10,30 @@ import type { PapelWhatsapp } from "./identidade";
  * que já haviam divergido — só um deles ignorava mensagem de grupo. Aqui
  * existe este caminho e nenhum outro.
  *
- * O LLM é o mesmo da v1: Gemini 2.5 Flash pelo gateway do Forge (Manus),
- * numa API compatível com a da OpenAI. Decisão de 07/08 — o Forge já
- * atendia o estúdio e a chave já existe, então trocar de provedor seria
- * custo novo sem pedido de ninguém.
+ * O modelo é o mesmo da v1 — Gemini 2.5 Flash, em API compatível com a da
+ * OpenAI —, mas falado direto com o Google. Até 24/08 ele vinha pelo
+ * gateway do Forge (Manus); nesse dia `forge.manus.im` saiu do DNS e levou
+ * o atendimento junto. Era a amarra que este comentário já previa, e o
+ * conserto foi o previsto: variável de ambiente, porque só este arquivo
+ * fala com o modelo.
  *
- * A amarra a conhecer: essa chave é da plataforma que a v2 está deixando
- * para trás. Se a assinatura do Manus cair, o atendimento cai junto —
- * e o conserto é uma variável de ambiente, porque só este arquivo fala
- * com o modelo.
+ * Os nomes das variáveis são genéricos de propósito. Batizar a
+ * configuração com o nome de um fornecedor foi metade do problema da vez
+ * passada — quando ele caiu, o código todo ainda dizia "Forge".
  */
-const MODELO = process.env.FORGE_MODELO ?? "gemini-2.5-flash";
-const BASE_FORGE = process.env.FORGE_API_URL ?? "https://forge.manus.im";
+const MODELO = process.env.LLM_MODELO ?? "gemini-2.5-flash";
 
-/* A v1 chamava a variável de OPENAI_API_KEY mesmo apontando para o Forge. */
-const chave = () => process.env.FORGE_API_KEY ?? process.env.OPENAI_API_KEY;
+/*
+ * Base no sentido dos SDKs da OpenAI: tudo que vem antes de
+ * `/chat/completions`, incluindo o `/v1` — ou o que o provedor use no
+ * lugar dele. No Google esse trecho é `/v1beta/openai`, e é justamente por
+ * isso que ele não pode ficar fixo na hora do fetch.
+ */
+const BASE_LLM =
+  process.env.LLM_API_URL ??
+  "https://generativelanguage.googleapis.com/v1beta/openai";
+
+const chave = () => process.env.LLM_API_KEY;
 
 /* ------------------------- o envelope da API compatível com a da OpenAI */
 
@@ -158,7 +167,7 @@ async function chamarLLM(
   mensagens: MensagemLLM[],
   apiKey: string
 ): Promise<RespostaLLM> {
-  const r = await fetch(`${BASE_FORGE.replace(/\/$/, "")}/v1/chat/completions`, {
+  const r = await fetch(`${BASE_LLM.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -170,13 +179,19 @@ async function chamarLLM(
       tools: ferramentasCliente,
       tool_choice: "auto",
       max_tokens: 32768,
-      /* os dois valores vieram da v1 — mantidos para não mudar o comportamento */
-      thinking: { budget_tokens: 128 },
+      /*
+       * O `thinking: { budget_tokens: 128 }` da v1 era extensão do Forge:
+       * em qualquer outro provedor vira campo desconhecido e derruba a
+       * chamada com 400. `reasoning_effort: "none"` é o equivalente na API
+       * do Google e mantém a intenção — atendimento não precisa raciocinar
+       * antes de responder, e raciocinar é cobrado como saída.
+       */
+      reasoning_effort: "none",
     }),
   });
 
   if (!r.ok) {
-    throw new Error(`Forge ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    throw new Error(`LLM ${r.status}: ${(await r.text()).slice(0, 200)}`);
   }
   return (await r.json()) as RespostaLLM;
 }
@@ -186,7 +201,7 @@ export async function responder(
 ): Promise<RespostaAgente> {
   const apiKey = chave();
   if (!apiKey) {
-    return { texto: null, escalou: false, erro: "FORGE_API_KEY ausente" };
+    return { texto: null, escalou: false, erro: "LLM_API_KEY ausente" };
   }
 
   const instrucoes = [

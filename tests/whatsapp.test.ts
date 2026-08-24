@@ -28,8 +28,7 @@ let db: DB;
 beforeEach(async () => {
   db = await criarBancoDeTeste();
   /* sem chave nem credencial: nenhum teste encosta em rede */
-  delete process.env.FORGE_API_KEY;
-  delete process.env.OPENAI_API_KEY;
+  delete process.env.LLM_API_KEY;
   delete process.env.WHATSAPP_ACCESS_TOKEN;
   delete process.env.WHATSAPP_PHONE_NUMBER_ID;
   delete process.env.WHATSAPP_VERIFY_TOKEN;

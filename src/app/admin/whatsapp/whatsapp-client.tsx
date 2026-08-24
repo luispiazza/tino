@@ -257,9 +257,9 @@ function Conexao({
             variavel="WHATSAPP_VERIFY_TOKEN"
           />
           <LinhaCredencial
-            rotulo="Chave do Forge (o modelo que responde)"
+            rotulo="Chave do modelo que responde"
             presente={credenciais.llm}
-            variavel="FORGE_API_KEY"
+            variavel="LLM_API_KEY"
           />
         </div>
         <Button
