@@ -36,6 +36,20 @@ export const metadata: Metadata = {
   title: "Tino Estúdio",
   description:
     "Complexo de estúdios de foto e vídeo em São Paulo. Mais de 500m², quatro espaços que se combinam.",
+  /*
+   * No iPhone o themeColor não alcança a barra do relógio de um app na
+   * tela de início — quem pinta ela é esta meta da Apple. `black` deixa a
+   * faixa preta e o conteúdo começa abaixo dela; `black-translucent` daria
+   * preto contínuo, mas só depois que as cascas reservarem
+   * env(safe-area-inset-top) — hoje só a barra do polegar trata safe area.
+   */
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black",
+    title: "Tino",
+  },
+  /* o Next só emite `mobile-web-app-capable`; iPhone antigo pede o prefixo */
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 /*
