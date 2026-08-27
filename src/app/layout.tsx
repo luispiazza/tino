@@ -38,9 +38,14 @@ export const metadata: Metadata = {
     "Complexo de estúdios de foto e vídeo em São Paulo. Mais de 500m², quatro espaços que se combinam.",
 };
 
-/* Webview-ready: o admin roda no celular hoje e vira app encapsulado depois */
+/*
+ * Webview-ready: o admin roda no celular hoje e vira app encapsulado depois.
+ * O themeColor pinta a barra do navegador com o mesmo tom do `body` no dark
+ * (--background), para a tela não ter emenda no topo. A vitrine, que tem
+ * fundo próprio, sobrescreve isso no layout dela.
+ */
 export const viewport: Viewport = {
-  themeColor: "#141414",
+  themeColor: "#0a0a0a",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
